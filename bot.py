@@ -29,8 +29,8 @@ DATA_DIR = os.path.dirname(__file__)
 DATA_FILE = os.path.join(DATA_DIR, "headache_data.json")
 _file_lock = threading.Lock()
 
-QUESTION_HOUR = int(os.environ.get("QUESTION_HOUR", "20"))
-QUESTION_MINUTE = int(os.environ.get("QUESTION_MINUTE", "0"))
+DEFAULT_HOUR = 20
+DEFAULT_MINUTE = 0
 
 MONTHS_RU = [
     "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -73,7 +73,11 @@ def get_user_data(user_id):
     data = load_data()
     uid = str(user_id)
     if uid not in data:
-        data[uid] = {"answers": {}}
+        data[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
+    if "hour" not in data[uid]:
+        data[uid]["hour"] = DEFAULT_HOUR
+    if "minute" not in data[uid]:
+        data[uid]["minute"] = DEFAULT_MINUTE
     return data[uid]
 
 
@@ -83,10 +87,15 @@ def save_user_data(user_id, user_data):
     save_data(data)
 
 
+def get_user_time(user_id):
+    user_data = get_user_data(user_id)
+    return user_data.get("hour", DEFAULT_HOUR), user_data.get("minute", DEFAULT_MINUTE)
+
+
 def get_main_keyboard():
     return ReplyKeyboardMarkup(
         [
-            [KeyboardButton("📋 Календарь")],
+            [KeyboardButton("📋 Календарь"), KeyboardButton("⚙️ Настройки")],
             [KeyboardButton("📊 Статистика"), KeyboardButton("ℹ️ Помощь")],
         ],
         resize_keyboard=True,
@@ -115,27 +124,67 @@ async def _safe_edit(query, text, **kwargs):
         return None
 
 
+def get_settings_keyboard(hour, minute):
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("◀️", callback_data="set_hour_prev"),
+            InlineKeyboardButton(f"Час: {hour:02d}", callback_data="set_ignore"),
+            InlineKeyboardButton("▶️", callback_data="set_hour_next"),
+        ],
+        [
+            InlineKeyboardButton("◀️", callback_data="set_min_prev"),
+            InlineKeyboardButton(f"Мин: {minute:02d}", callback_data="set_ignore"),
+            InlineKeyboardButton("▶️", callback_data="set_min_next"),
+        ],
+        [InlineKeyboardButton("✅ Сохранить", callback_data="set_save")],
+        [InlineKeyboardButton("⬅️ В меню", callback_data="set_back")],
+    ])
+
+
+async def reschedule_user_job(context, user_id, hour, minute):
+    job_queue = context.job_queue
+    job_name = f"daily_{user_id}"
+    current_jobs = job_queue.get_jobs_by_name(job_name)
+    for job in current_jobs:
+        job.schedule_removal()
+    job_queue.run_daily(
+        send_daily_question,
+        time=datetime.time(hour=hour, minute=minute, second=0),
+        chat_id=user_id,
+        name=job_name,
+    )
+    logger.info("Rescheduled daily question for user %s at %02d:%02d", user_id, hour, minute)
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    hour, minute = get_user_time(user_id)
+
+    await reschedule_user_job(context, user_id, hour, minute)
+
     await update.message.reply_text(
         "Привет! Я дневник головной боли.\n"
         "Каждый день в {hour}:{minute:02d} я буду спрашивать, болела ли голова.\n\n"
-        "Отвечай кнопками, и я сохраню статистику.".format(
-            hour=QUESTION_HOUR, minute=QUESTION_MINUTE
+        "В меню «⚙️ Настройки» можно изменить время.".format(
+            hour=hour, minute=minute
         ),
         reply_markup=get_main_keyboard(),
     )
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    hour, minute = get_user_time(user_id)
     await update.message.reply_text(
         "Как пользоваться:\n\n"
         "Каждый день в {hour}:{minute:02d} я пришлю вопрос: болела ли голова.\n"
         "Нажми «Да, болела» или «Нет, не болела».\n\n"
-        "Команды:\n"
+        "Меню:\n"
         "📋 Календарь — посмотреть дни за текущий месяц\n"
+        "⚙️ Настройки — изменить время вопроса\n"
         "📊 Статистика — общая статистика\n"
         "ℹ️ Помощь — эта справка".format(
-            hour=QUESTION_HOUR, minute=QUESTION_MINUTE
+            hour=hour, minute=minute
         ),
         reply_markup=get_main_keyboard(),
     )
@@ -218,7 +267,51 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data == "cal_ignore":
-        await query.answer()
+        return
+
+    if data.startswith("set_hour_") or data.startswith("set_min_"):
+        user_data = get_user_data(user_id)
+        hour = user_data.get("hour", DEFAULT_HOUR)
+        minute = user_data.get("minute", DEFAULT_MINUTE)
+
+        if data == "set_hour_next":
+            hour = (hour + 1) % 24
+        elif data == "set_hour_prev":
+            hour = (hour - 1) % 24
+        elif data == "set_min_next":
+            minute = (minute + 15) % 60
+        elif data == "set_min_prev":
+            minute = (minute - 15) % 60
+        elif data == "set_save":
+            save_user_data(user_id, user_data)
+            await reschedule_user_job(context, user_id, hour, minute)
+            await _safe_edit(
+                query,
+                "✅ Время сохранено: {hour}:{minute:02d}\nВопрос будет приходить каждый день.".format(
+                    hour=hour, minute=minute
+                ),
+            )
+            return
+        elif data == "set_back":
+            await _safe_edit(query, "Выбери действие:")
+            await _safe_reply(query.message, "Выбери действие:", reply_markup=get_main_keyboard())
+            return
+        elif data == "set_ignore":
+            return
+
+        user_data["hour"] = hour
+        user_data["minute"] = minute
+        save_user_data(user_id, user_data)
+
+        keyboard = get_settings_keyboard(hour, minute)
+        await _safe_edit(
+            query,
+            "Настройки времени вопроса:\nТекущее время: {hour}:{minute:02d}".format(
+                hour=hour, minute=minute
+            ),
+            reply_markup=keyboard,
+        )
+        return
 
 
 def get_calendar_keyboard(user_id, year, month):
@@ -242,7 +335,6 @@ def get_calendar_keyboard(user_id, year, month):
     ])
 
     cal = calendar.monthcalendar(year, month)
-    today = datetime.date.today()
     for week in cal:
         row = []
         for day in week:
@@ -270,6 +362,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         now = datetime.date.today()
         keyboard, header = get_calendar_keyboard(user_id, now.year, now.month)
         await update.message.reply_text(header, reply_markup=keyboard)
+        return
+
+    if text == "⚙️ Настройки":
+        hour, minute = get_user_time(user_id)
+        keyboard = get_settings_keyboard(hour, minute)
+        await update.message.reply_text(
+            "Настройки времени вопроса:\nТекущее время: {hour}:{minute:02d}".format(
+                hour=hour, minute=minute
+            ),
+            reply_markup=keyboard,
+        )
         return
 
     if text == "📊 Статистика":
@@ -307,16 +410,18 @@ async def error_handler(update, context):
 
 
 async def post_init(application):
+    data = load_data()
     job_queue = application.job_queue
-    job_queue.run_daily(
-        send_daily_question,
-        time=datetime.time(hour=QUESTION_HOUR, minute=QUESTION_MINUTE, second=0),
-        name="daily_headache_question",
-    )
-    logger.info("Scheduled daily question at %02d:%02d", QUESTION_HOUR, QUESTION_MINUTE)
-
-    if update := application.update_queue:
-        pass
+    for uid, udata in data.items():
+        hour = udata.get("hour", DEFAULT_HOUR)
+        minute = udata.get("minute", DEFAULT_MINUTE)
+        job_queue.run_daily(
+            send_daily_question,
+            time=datetime.time(hour=hour, minute=minute, second=0),
+            chat_id=int(uid),
+            name=f"daily_{uid}",
+        )
+        logger.info("Scheduled daily question for user %s at %02d:%02d", uid, hour, minute)
 
 
 def main():
