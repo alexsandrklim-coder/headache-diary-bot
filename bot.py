@@ -192,25 +192,25 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def send_daily_question(context: ContextTypes.DEFAULT_TYPE):
     chat_id = context.job.chat_id
-    today = datetime.date.today().isoformat()
+    yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
     user_data = get_user_data(chat_id)
 
-    if today in user_data.get("answers", {}):
+    if yesterday in user_data.get("answers", {}):
         return
+
+    yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
 
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("😣 Да, болела", callback_data=f"pain_yes_{today}"),
-            InlineKeyboardButton("😊 Нет, не болела", callback_data=f"pain_no_{today}"),
+            InlineKeyboardButton("Да 🙄", callback_data=f"pain_yes_{yesterday}"),
+            InlineKeyboardButton("Нет 🙂", callback_data=f"pain_no_{yesterday}"),
         ],
     ])
 
     try:
         await context.bot.send_message(
             chat_id=chat_id,
-            text="Голова болела сегодня? ({date})".format(
-                date=datetime.date.today().strftime("%d.%m.%Y")
-            ),
+            text="— Привет, это я!\nУ вас вчера болела голова?",
             reply_markup=keyboard,
         )
     except Exception as e:
@@ -241,6 +241,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             status="голова болела" if has_pain else "голова не болела",
         )
         await _safe_edit(query, text)
+        await _safe_reply(query.message, "Выбери действие:", reply_markup=get_main_keyboard())
         return
 
     if data.startswith("cal_prev_") or data.startswith("cal_next_"):
