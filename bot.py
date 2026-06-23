@@ -161,6 +161,22 @@ async def reschedule_user_job(context, user_id, hour, minute):
 
 
 DEFAULT_SEED_DATA = {
+    "2026-05-01": False,
+    "2026-05-04": True,
+    "2026-05-05": True,
+    "2026-05-06": True,
+    "2026-05-07": False,
+    "2026-05-08": False,
+    "2026-05-09": True,
+    "2026-05-10": False,
+    "2026-05-11": False,
+    "2026-05-13": False,
+    "2026-05-14": True,
+    "2026-05-15": True,
+    "2026-05-16": False,
+    "2026-05-18": True,
+    "2026-05-21": False,
+    "2026-05-22": False,
     "2026-06-01": False,
     "2026-06-04": True,
     "2026-06-05": True,
