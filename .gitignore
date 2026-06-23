@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.log
+*.pid
+*.bak
+.env
+headache_data.json
