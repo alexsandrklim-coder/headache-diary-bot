@@ -190,6 +190,33 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def cmd_import(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    text = update.message.text.strip()
+    lines = text.split("\n")
+    user_data = get_user_data(user_id)
+    if "answers" not in user_data:
+        user_data["answers"] = {}
+
+    imported = 0
+    for line in lines[1:]:
+        line = line.strip()
+        if not line:
+            continue
+        parts = line.split(",")
+        if len(parts) == 2:
+            date_str = parts[0].strip()
+            pain = parts[1].strip().lower() in ("true", "1", "да", "bol")
+            user_data["answers"][date_str] = pain
+            imported += 1
+
+    save_user_data(user_id, user_data)
+    await update.message.reply_text(
+        "✅ Импортировано {count} дней.".format(count=imported),
+        reply_markup=get_main_keyboard(),
+    )
+
+
 async def send_daily_question(context: ContextTypes.DEFAULT_TYPE):
     chat_id = context.job.chat_id
     yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
@@ -457,6 +484,7 @@ def main():
         )
         app.add_handler(CommandHandler("start", cmd_start))
         app.add_handler(CommandHandler("help", cmd_help))
+        app.add_handler(CommandHandler("import", cmd_import))
         app.add_handler(CallbackQueryHandler(handle_callback))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         app.add_error_handler(error_handler)
