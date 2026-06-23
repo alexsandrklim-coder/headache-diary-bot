@@ -270,7 +270,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "cal_ignore":
         return
 
-    if data.startswith("set_hour_") or data.startswith("set_min_"):
+    if data.startswith("set_"):
         user_data = get_user_data(user_id)
         hour = user_data.get("hour", DEFAULT_HOUR)
         minute = user_data.get("minute", DEFAULT_MINUTE)
@@ -286,15 +286,23 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif data == "set_save":
             save_user_data(user_id, user_data)
             await reschedule_user_job(context, user_id, hour, minute)
-            await _safe_edit(
-                query,
-                "✅ Время сохранено: {hour}:{minute:02d}\nВопрос будет приходить каждый день.".format(
+            try:
+                await query.message.delete()
+            except Exception:
+                pass
+            await _safe_reply(
+                query.message,
+                "✅ Время сохранено: {hour}:{minute:02d}".format(
                     hour=hour, minute=minute
                 ),
+                reply_markup=get_main_keyboard(),
             )
             return
         elif data == "set_back":
-            await _safe_edit(query, "Выбери действие:")
+            try:
+                await query.message.delete()
+            except Exception:
+                pass
             await _safe_reply(query.message, "Выбери действие:", reply_markup=get_main_keyboard())
             return
         elif data == "set_ignore":
