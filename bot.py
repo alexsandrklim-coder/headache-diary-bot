@@ -319,11 +319,16 @@ def get_calendar_keyboard(user_id, year, month):
     user_data = get_user_data(user_id)
     answers = user_data.get("answers", {})
 
+    prev_month = month - 1 if month > 1 else 12
+    prev_year = year if month > 1 else year - 1
+    next_month = month + 1 if month < 12 else 1
+    next_year = year if month < 12 else year + 1
+
     buttons = []
     buttons.append([
-        InlineKeyboardButton("◀️", callback_data=f"cal_prev_{year}_{month}"),
+        InlineKeyboardButton(f"◀ {MONTHS_RU[prev_month-1]}", callback_data=f"cal_prev_{year}_{month}"),
         InlineKeyboardButton(f"{MONTHS_RU[month-1]} {year}", callback_data="cal_ignore"),
-        InlineKeyboardButton("▶️", callback_data=f"cal_next_{year}_{month}"),
+        InlineKeyboardButton(f"{MONTHS_RU[next_month-1]} ▶", callback_data=f"cal_next_{year}_{month}"),
     ])
     buttons.append([
         InlineKeyboardButton("Пн", callback_data="cal_ignore"),
