@@ -73,11 +73,15 @@ def get_user_data(user_id):
     data = load_data()
     uid = str(user_id)
     if uid not in data:
-        data[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
+        data[uid] = {"answers": DEFAULT_SEED_DATA.copy(), "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
+        save_data(data)
     if "hour" not in data[uid]:
         data[uid]["hour"] = DEFAULT_HOUR
     if "minute" not in data[uid]:
         data[uid]["minute"] = DEFAULT_MINUTE
+    if not data[uid].get("answers"):
+        data[uid]["answers"] = DEFAULT_SEED_DATA.copy()
+        save_data(data)
     return data[uid]
 
 
