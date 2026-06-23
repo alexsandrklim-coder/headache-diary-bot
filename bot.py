@@ -201,9 +201,10 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     hour, minute = get_user_time(user_id)
 
     user_data = get_user_data(user_id)
-    if not user_data.get("answers"):
-        user_data["answers"] = DEFAULT_SEED_DATA.copy()
-        save_user_data(user_id, user_data)
+    for k, v in DEFAULT_SEED_DATA.items():
+        if k not in user_data.get("answers", {}):
+            user_data.setdefault("answers", {})[k] = v
+    save_user_data(user_id, user_data)
 
     await reschedule_user_job(context, user_id, hour, minute)
 
