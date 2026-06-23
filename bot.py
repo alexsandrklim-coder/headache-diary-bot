@@ -156,9 +156,34 @@ async def reschedule_user_job(context, user_id, hour, minute):
     logger.info("Rescheduled daily question for user %s at %02d:%02d", user_id, hour, minute)
 
 
+DEFAULT_SEED_DATA = {
+    "2026-06-01": False,
+    "2026-06-04": True,
+    "2026-06-05": True,
+    "2026-06-06": True,
+    "2026-06-07": False,
+    "2026-06-08": False,
+    "2026-06-09": True,
+    "2026-06-10": False,
+    "2026-06-11": False,
+    "2026-06-13": False,
+    "2026-06-14": True,
+    "2026-06-15": True,
+    "2026-06-16": False,
+    "2026-06-18": True,
+    "2026-06-21": False,
+    "2026-06-22": False,
+}
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     hour, minute = get_user_time(user_id)
+
+    user_data = get_user_data(user_id)
+    if not user_data.get("answers"):
+        user_data["answers"] = DEFAULT_SEED_DATA.copy()
+        save_user_data(user_id, user_data)
 
     await reschedule_user_job(context, user_id, hour, minute)
 
