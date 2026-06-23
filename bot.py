@@ -79,9 +79,8 @@ def get_user_data(user_id):
         data[uid]["hour"] = DEFAULT_HOUR
     if "minute" not in data[uid]:
         data[uid]["minute"] = DEFAULT_MINUTE
-    if not data[uid].get("answers"):
-        data[uid]["answers"] = DEFAULT_SEED_DATA.copy()
-        save_data(data)
+    for k, v in DEFAULT_SEED_DATA.items():
+        data[uid].setdefault("answers", {})[k] = v
     return data[uid]
 
 
