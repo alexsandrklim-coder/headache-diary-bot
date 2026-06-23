@@ -436,6 +436,7 @@ def get_calendar_keyboard(user_id, year, month):
 
     cal = calendar.monthcalendar(year, month)
     pain_count = 0
+    pain_dates = []
     for week in cal:
         row = []
         for day in week:
@@ -447,6 +448,7 @@ def get_calendar_keyboard(user_id, year, month):
                     if answers[date_str]:
                         marker = "🔺"
                         pain_count += 1
+                        pain_dates.append(day)
                     else:
                         marker = "✓"
                     row.append(InlineKeyboardButton(f"{day}{marker}", callback_data="cal_ignore"))
@@ -454,8 +456,25 @@ def get_calendar_keyboard(user_id, year, month):
                     row.append(InlineKeyboardButton(str(day), callback_data="cal_ignore"))
         buttons.append(row)
 
+    max_streak = 0
+    current_streak = 0
+    for day in range(1, 32):
+        if day in pain_dates:
+            current_streak += 1
+            max_streak = max(max_streak, current_streak)
+        else:
+            current_streak = 0
+
+    total_days = calendar.monthrange(year, month)[1]
+    pain_pct = round(pain_count / total_days * 100) if total_days > 0 else 0
+
     buttons.append([InlineKeyboardButton("⬅️ В меню", callback_data="cal_back")])
-    header = f"{MONTHS_RU[month-1]} {year}\n🔺 {pain_count} дн. болела"
+    header = (
+        f"{MONTHS_RU[month-1]} {year}\n"
+        f"🔺 {pain_count} дн. болела\n"
+        f"🔥 До {max_streak} дн. подряд\n"
+        f"📊 {pain_pct}% болезненных дней"
+    )
     return InlineKeyboardMarkup(buttons), header
 
 
