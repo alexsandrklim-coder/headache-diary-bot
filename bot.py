@@ -229,9 +229,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     hour, minute = get_user_time(user_id)
 
     user_data = get_user_data(user_id)
-    for k, v in DEFAULT_SEED_DATA.items():
-        if k not in user_data.get("answers", {}):
-            user_data.setdefault("answers", {})[k] = v
     save_user_data(user_id, user_data)
 
     await reschedule_user_job(context, user_id, hour, minute)
@@ -625,17 +622,25 @@ async def error_handler(update, context):
 
 async def post_init(application):
     data = load_data()
-    job_queue = application.job_queue
+    updated = False
     for uid, udata in data.items():
+        answers = udata.setdefault("answers", {})
+        for k, v in DEFAULT_SEED_DATA.items():
+            if answers.get(k) != v:
+                answers[k] = v
+                updated = True
         hour = udata.get("hour", DEFAULT_HOUR)
         minute = udata.get("minute", DEFAULT_MINUTE)
-        job_queue.run_daily(
+        application.job_queue.run_daily(
             send_daily_question,
             time=datetime.time(hour=hour, minute=minute, second=0),
             chat_id=int(uid),
             name=f"daily_{uid}",
         )
         logger.info("Scheduled daily question for user %s at %02d:%02d", uid, hour, minute)
+    if updated:
+        save_data(data)
+        logger.info("Seed data updated on startup")
 
 
 def main():
