@@ -173,22 +173,35 @@ DEFAULT_SEED_DATA = {
     "2026-04-19": True,
     "2026-04-24": True,
     "2026-04-25": True,
-    "2026-05-01": False,
+    "2026-05-01": True,
+    "2026-05-02": False,
+    "2026-05-03": False,
     "2026-05-04": True,
-    "2026-05-05": True,
-    "2026-05-06": True,
+    "2026-05-05": False,
+    "2026-05-06": False,
     "2026-05-07": False,
     "2026-05-08": False,
     "2026-05-09": True,
     "2026-05-10": False,
     "2026-05-11": False,
+    "2026-05-12": False,
     "2026-05-13": False,
-    "2026-05-14": True,
-    "2026-05-15": True,
-    "2026-05-16": False,
-    "2026-05-18": True,
-    "2026-05-21": False,
-    "2026-05-22": False,
+    "2026-05-15": False,
+    "2026-05-17": True,
+    "2026-05-18": False,
+    "2026-05-19": False,
+    "2026-05-20": True,
+    "2026-05-21": True,
+    "2026-05-22": True,
+    "2026-05-23": False,
+    "2026-05-24": True,
+    "2026-05-25": False,
+    "2026-05-26": True,
+    "2026-05-27": False,
+    "2026-05-28": True,
+    "2026-05-29": True,
+    "2026-05-30": False,
+    "2026-05-31": False,
     "2026-06-01": False,
     "2026-06-04": True,
     "2026-06-05": True,
@@ -236,7 +249,8 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Как пользоваться:\n\n"
         "Каждый день в {hour}:{minute:02d} я пришлю вопрос: болела ли голова.\n"
-        "Нажми «Да, болела» или «Нет, не болела».\n\n"
+        "Нажми «Да, болела» или «Нет, не болела».\n"
+        "После ответа можно будет добавить заметку.\n\n"
         "Меню:\n"
         "📋 Календарь — посмотреть дни за текущий месяц\n"
         "⚙️ Настройки — изменить время вопроса\n"
@@ -295,7 +309,7 @@ async def send_daily_question(context: ContextTypes.DEFAULT_TYPE):
     try:
         await context.bot.send_message(
             chat_id=chat_id,
-            text="— Привет, это я!\nУ вас вчера болела голова?",
+            text="Привет. У вас вчера болела голова?",
             reply_markup=keyboard,
         )
     except Exception as e:
@@ -326,7 +340,33 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             status="голова болела" if has_pain else "голова не болела",
         )
         await _safe_edit(query, text)
-        await _safe_reply(query.message, "Выбери действие:", reply_markup=get_main_keyboard())
+
+        note_keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("Да", callback_data=f"note_yes_{date_str}"),
+                InlineKeyboardButton("Нет", callback_data=f"note_no_{date_str}"),
+            ],
+        ])
+        await _safe_reply(query.message, "Хотите сделать заметку?", reply_markup=note_keyboard)
+        return
+
+    if data.startswith("note_"):
+        parts = data.split("_")
+        action = parts[1]
+        date_str = parts[2]
+
+        if action == "no":
+            await _safe_edit(query, "Ок")
+            await _safe_reply(query.message, "Выбери действие:", reply_markup=get_main_keyboard())
+            return
+
+        if action == "yes":
+            user_data = get_user_data(user_id)
+            user_data["note_pending"] = date_str
+            save_user_data(user_id, user_data)
+            await _safe_edit(query, "Напиши заметку:")
+            return
+
         return
 
     if data.startswith("cal_prev_") or data.startswith("cal_next_"):
@@ -411,6 +451,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def get_calendar_keyboard(user_id, year, month):
     user_data = get_user_data(user_id)
     answers = user_data.get("answers", {})
+    notes = user_data.get("notes", {})
 
     prev_month = month - 1 if month > 1 else 12
     prev_year = year if month > 1 else year - 1
@@ -450,9 +491,11 @@ def get_calendar_keyboard(user_id, year, month):
                         pain_dates.append(day)
                     else:
                         marker = "✓"
-                    row.append(InlineKeyboardButton(f"{day}{marker}", callback_data="cal_ignore"))
+                    note_marker = "📝" if date_str in notes else ""
+                    row.append(InlineKeyboardButton(f"{day}{marker}{note_marker}", callback_data="cal_ignore"))
                 else:
-                    row.append(InlineKeyboardButton(str(day), callback_data="cal_ignore"))
+                    note_marker = "📝" if date_str in notes else ""
+                    row.append(InlineKeyboardButton(f"{day}{note_marker}", callback_data="cal_ignore"))
         buttons.append(row)
 
     max_streak = 0
@@ -468,11 +511,13 @@ def get_calendar_keyboard(user_id, year, month):
     pain_pct = round(pain_count / total_days * 100) if total_days > 0 else 0
 
     buttons.append([InlineKeyboardButton("⬅️ В меню", callback_data="cal_back")])
+    note_count = sum(1 for d in notes if d.startswith(f"{year}-{month:02d}"))
     header = (
         f"{MONTHS_RU[month-1]} {year}\n"
         f"🔺 {pain_count} дн. болела\n"
         f"🔥 До {max_streak} дн. подряд\n"
-        f"📊 {pain_pct}% болезненных дней"
+        f"📊 {pain_pct}% болезненных дней\n"
+        f"📝 {note_count} заметок"
     )
     return InlineKeyboardMarkup(buttons), header
 
@@ -480,6 +525,22 @@ def get_calendar_keyboard(user_id, year, month):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text.strip()
+
+    user_data = get_user_data(user_id)
+    note_pending = user_data.get("note_pending")
+    if note_pending:
+        if "notes" not in user_data:
+            user_data["notes"] = {}
+        user_data["notes"][note_pending] = text
+        user_data.pop("note_pending", None)
+        save_user_data(user_id, user_data)
+        await update.message.reply_text(
+            "✅ Заметка к {date} сохранена.".format(
+                date=datetime.datetime.strptime(note_pending, "%Y-%m-%d").strftime("%d.%m.%Y")
+            ),
+            reply_markup=get_main_keyboard(),
+        )
+        return
 
     if text == "📋 Календарь":
         now = datetime.date.today()
