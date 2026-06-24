@@ -576,7 +576,7 @@ async def post_init(application):
 
 
 def main():
-    logger.info("Bot starting... v3 EMPTY")
+    logger.info("Bot starting... v4 May=%d", len(HARD_DATA))
     if os.path.exists(DATA_FILE):
         os.remove(DATA_FILE)
         logger.info("Deleted headache_data.json")
