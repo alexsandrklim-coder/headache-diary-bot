@@ -646,6 +646,7 @@ async def error_handler(update, context):
 
 
 async def post_init(application):
+    logger.info("post_init: START")
     data = load_data()
     logger.info("post_init: loaded %d users", len(data))
     updated = False
@@ -657,13 +658,16 @@ async def post_init(application):
                 updated = True
         hour = udata.get("hour", DEFAULT_HOUR)
         minute = udata.get("minute", DEFAULT_MINUTE)
-        application.job_queue.run_daily(
-            send_daily_question,
-            time=datetime.time(hour=hour, minute=minute, second=0),
-            chat_id=int(uid),
-            name=f"daily_{uid}",
-        )
-        logger.info("Scheduled daily question for user %s at %02d:%02d", uid, hour, minute)
+        try:
+            application.job_queue.run_daily(
+                send_daily_question,
+                time=datetime.time(hour=hour, minute=minute, second=0),
+                chat_id=int(uid),
+                name=f"daily_{uid}",
+            )
+            logger.info("Scheduled daily question for user %s at %02d:%02d", uid, hour, minute)
+        except Exception as e:
+            logger.error("Failed to schedule for user %s: %s", uid, e)
     if updated:
         save_data(data)
         logger.info("Seed data updated on startup")
