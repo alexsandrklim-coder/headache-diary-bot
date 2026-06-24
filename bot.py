@@ -37,6 +37,69 @@ MONTHS_RU = [
     "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
 ]
 
+HARD_DATA = {
+    "2026-04-01": True,
+    "2026-04-02": True,
+    "2026-04-03": True,
+    "2026-04-04": True,
+    "2026-04-07": True,
+    "2026-04-08": True,
+    "2026-04-11": True,
+    "2026-04-14": True,
+    "2026-04-15": True,
+    "2026-04-18": True,
+    "2026-04-19": True,
+    "2026-04-24": True,
+    "2026-04-25": True,
+    "2026-05-01": True,
+    "2026-05-02": False,
+    "2026-05-03": False,
+    "2026-05-04": True,
+    "2026-05-05": False,
+    "2026-05-06": False,
+    "2026-05-07": True,
+    "2026-05-08": False,
+    "2026-05-09": True,
+    "2026-05-10": False,
+    "2026-05-11": False,
+    "2026-05-12": False,
+    "2026-05-13": False,
+    "2026-05-14": False,
+    "2026-05-15": False,
+    "2026-05-16": False,
+    "2026-05-17": True,
+    "2026-05-18": False,
+    "2026-05-19": False,
+    "2026-05-20": True,
+    "2026-05-21": True,
+    "2026-05-22": True,
+    "2026-05-23": False,
+    "2026-05-24": True,
+    "2026-05-25": False,
+    "2026-05-26": True,
+    "2026-05-27": False,
+    "2026-05-28": True,
+    "2026-05-29": True,
+    "2026-05-30": False,
+    "2026-05-31": False,
+    "2026-06-01": False,
+    "2026-06-04": True,
+    "2026-06-05": True,
+    "2026-06-06": True,
+    "2026-06-07": False,
+    "2026-06-08": False,
+    "2026-06-09": True,
+    "2026-06-10": False,
+    "2026-06-11": False,
+    "2026-06-13": False,
+    "2026-06-14": True,
+    "2026-06-15": True,
+    "2026-06-16": False,
+    "2026-06-18": True,
+    "2026-06-21": False,
+    "2026-06-22": False,
+}
+
 
 def _atomic_save(filepath, data):
     with _file_lock:
@@ -73,32 +136,22 @@ def get_user_data(user_id):
     data = load_data()
     uid = str(user_id)
     if uid not in data:
-        data[uid] = {"answers": DEFAULT_SEED_DATA.copy(), "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
+        data[uid] = {"answers": HARD_DATA.copy(), "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
         save_data(data)
-        logger.info("Created new user %s with seed data", uid)
     if "hour" not in data[uid]:
         data[uid]["hour"] = DEFAULT_HOUR
     if "minute" not in data[uid]:
         data[uid]["minute"] = DEFAULT_MINUTE
     answers = data[uid].setdefault("answers", {})
-    changed = False
-    for k, v in DEFAULT_SEED_DATA.items():
-        if answers.get(k) != v:
-            logger.info("User %s: overwriting %s from %s to %s", uid, k, answers.get(k), v)
-            answers[k] = v
-            changed = True
-    if changed:
-        save_data(data)
-        logger.info("User %s: seed data updated and saved (%d answers)", uid, len(answers))
+    for k, v in HARD_DATA.items():
+        answers[k] = v
     return data[uid]
 
 
 def save_user_data(user_id, user_data):
     data = load_data()
-    uid = str(user_id)
-    data[uid] = user_data
+    data[str(user_id)] = user_data
     save_data(data)
-    logger.info("User %s: saved %d answers", uid, len(user_data.get("answers", {})))
 
 
 def get_user_time(user_id):
@@ -170,68 +223,77 @@ async def reschedule_user_job(context, user_id, hour, minute):
     logger.info("Rescheduled daily question for user %s at %02d:%02d", user_id, hour, minute)
 
 
-DEFAULT_SEED_DATA = {
-    "2026-04-01": True,
-    "2026-04-02": True,
-    "2026-04-03": True,
-    "2026-04-04": True,
-    "2026-04-07": True,
-    "2026-04-08": True,
-    "2026-04-11": True,
-    "2026-04-14": True,
-    "2026-04-15": True,
-    "2026-04-18": True,
-    "2026-04-19": True,
-    "2026-04-24": True,
-    "2026-04-25": True,
-    "2026-05-01": True,
-    "2026-05-02": False,
-    "2026-05-03": False,
-    "2026-05-04": True,
-    "2026-05-05": False,
-    "2026-05-06": False,
-    "2026-05-07": True,
-    "2026-05-08": False,
-    "2026-05-09": True,
-    "2026-05-10": False,
-    "2026-05-11": False,
-    "2026-05-12": False,
-    "2026-05-13": False,
-    "2026-05-14": False,
-    "2026-05-15": False,
-    "2026-05-16": False,
-    "2026-05-17": True,
-    "2026-05-18": False,
-    "2026-05-19": False,
-    "2026-05-20": True,
-    "2026-05-21": True,
-    "2026-05-22": True,
-    "2026-05-23": False,
-    "2026-05-24": True,
-    "2026-05-25": False,
-    "2026-05-26": True,
-    "2026-05-27": False,
-    "2026-05-28": True,
-    "2026-05-29": True,
-    "2026-05-30": False,
-    "2026-05-31": False,
-    "2026-06-01": False,
-    "2026-06-04": True,
-    "2026-06-05": True,
-    "2026-06-06": True,
-    "2026-06-07": False,
-    "2026-06-08": False,
-    "2026-06-09": True,
-    "2026-06-10": False,
-    "2026-06-11": False,
-    "2026-06-13": False,
-    "2026-06-14": True,
-    "2026-06-15": True,
-    "2026-06-16": False,
-    "2026-06-18": True,
-    "2026-06-21": False,
-    "2026-06-22": False,
-}
+def get_calendar_keyboard(user_id, year, month):
+    user_data = get_user_data(user_id)
+    answers = dict(user_data.get("answers", {}))
+    for k, v in HARD_DATA.items():
+        answers[k] = v
+    notes = user_data.get("notes", {})
+
+    prev_month = month - 1 if month > 1 else 12
+    prev_year = year if month > 1 else year - 1
+    next_month = month + 1 if month < 12 else 1
+    next_year = year if month < 12 else year + 1
+
+    buttons = []
+    buttons.append([
+        InlineKeyboardButton(f"◀ {MONTHS_RU[prev_month-1]}", callback_data=f"cal_prev_{year}_{month}"),
+        InlineKeyboardButton(f"{MONTHS_RU[month-1]} {year}", callback_data="cal_ignore"),
+        InlineKeyboardButton(f"{MONTHS_RU[next_month-1]} ▶", callback_data=f"cal_next_{year}_{month}"),
+    ])
+    buttons.append([
+        InlineKeyboardButton("Пн", callback_data="cal_ignore"),
+        InlineKeyboardButton("Вт", callback_data="cal_ignore"),
+        InlineKeyboardButton("Ср", callback_data="cal_ignore"),
+        InlineKeyboardButton("Чт", callback_data="cal_ignore"),
+        InlineKeyboardButton("Пт", callback_data="cal_ignore"),
+        InlineKeyboardButton("Сб", callback_data="cal_ignore"),
+        InlineKeyboardButton("Вс", callback_data="cal_ignore"),
+    ])
+
+    cal = calendar.monthcalendar(year, month)
+    pain_count = 0
+    pain_dates = []
+    for week in cal:
+        row = []
+        for day in week:
+            if day == 0:
+                row.append(InlineKeyboardButton(" ", callback_data="cal_ignore"))
+            else:
+                date_str = f"{year}-{month:02d}-{day:02d}"
+                if date_str in answers:
+                    if answers[date_str]:
+                        marker = "🔺"
+                        pain_count += 1
+                        pain_dates.append(day)
+                    else:
+                        marker = "✓"
+                    row.append(InlineKeyboardButton(f"{day}{marker}", callback_data="cal_ignore"))
+                else:
+                    row.append(InlineKeyboardButton(f"{day}", callback_data="cal_ignore"))
+        buttons.append(row)
+
+    max_streak = 0
+    current_streak = 0
+    for day in range(1, 32):
+        if day in pain_dates:
+            current_streak += 1
+            max_streak = max(max_streak, current_streak)
+        else:
+            current_streak = 0
+
+    total_days = calendar.monthrange(year, month)[1]
+    pain_pct = round(pain_count / total_days * 100) if total_days > 0 else 0
+
+    buttons.append([InlineKeyboardButton("⬅️ В меню", callback_data="cal_back")])
+
+    header = (
+        f"{MONTHS_RU[month-1]} {year}\n"
+        f"🔺 {pain_count} дн. болела\n"
+        f"🔥 До {max_streak} дн. подряд\n"
+        f"📊 {pain_pct}% болезненных дней"
+    )
+    return InlineKeyboardMarkup(buttons), header
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -272,48 +334,6 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def cmd_fix(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    uid = str(user_id)
-    data = load_data()
-    if uid not in data:
-        data[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
-    data[uid]["answers"] = DEFAULT_SEED_DATA.copy()
-    save_data(data)
-    logger.info("User %s: /fix — forced %d seed answers", uid, len(DEFAULT_SEED_DATA))
-    await update.message.reply_text(
-        "✅ Данные сброшены!\nВсе даты обновлены по эталону.\n\nНажми «📋 Календарь» для проверки.",
-        reply_markup=get_main_keyboard(),
-    )
-
-
-async def cmd_import(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    text = update.message.text.strip()
-    lines = text.split("\n")
-    user_data = get_user_data(user_id)
-    if "answers" not in user_data:
-        user_data["answers"] = {}
-
-    imported = 0
-    for line in lines[1:]:
-        line = line.strip()
-        if not line:
-            continue
-        parts = line.split(",")
-        if len(parts) == 2:
-            date_str = parts[0].strip()
-            pain = parts[1].strip().lower() in ("true", "1", "да", "bol")
-            user_data["answers"][date_str] = pain
-            imported += 1
-
-    save_user_data(user_id, user_data)
-    await update.message.reply_text(
-        "✅ Импортировано {count} дней.".format(count=imported),
-        reply_markup=get_main_keyboard(),
-    )
-
-
 async def send_daily_question(context: ContextTypes.DEFAULT_TYPE):
     chat_id = context.job.chat_id
     yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
@@ -321,8 +341,6 @@ async def send_daily_question(context: ContextTypes.DEFAULT_TYPE):
 
     if yesterday in user_data.get("answers", {}):
         return
-
-    yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -473,82 +491,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 
-def get_calendar_keyboard(user_id, year, month):
-    user_data = get_user_data(user_id)
-    answers = dict(user_data.get("answers", {}))
-    for k, v in DEFAULT_SEED_DATA.items():
-        answers[k] = v
-    notes = user_data.get("notes", {})
-
-    prev_month = month - 1 if month > 1 else 12
-    prev_year = year if month > 1 else year - 1
-    next_month = month + 1 if month < 12 else 1
-    next_year = year if month < 12 else year + 1
-
-    buttons = []
-    buttons.append([
-        InlineKeyboardButton(f"◀ {MONTHS_RU[prev_month-1]}", callback_data=f"cal_prev_{year}_{month}"),
-        InlineKeyboardButton(f"{MONTHS_RU[month-1]} {year}", callback_data="cal_ignore"),
-        InlineKeyboardButton(f"{MONTHS_RU[next_month-1]} ▶", callback_data=f"cal_next_{year}_{month}"),
-    ])
-    buttons.append([
-        InlineKeyboardButton("Пн", callback_data="cal_ignore"),
-        InlineKeyboardButton("Вт", callback_data="cal_ignore"),
-        InlineKeyboardButton("Ср", callback_data="cal_ignore"),
-        InlineKeyboardButton("Чт", callback_data="cal_ignore"),
-        InlineKeyboardButton("Пт", callback_data="cal_ignore"),
-        InlineKeyboardButton("Сб", callback_data="cal_ignore"),
-        InlineKeyboardButton("Вс", callback_data="cal_ignore"),
-    ])
-
-    cal = calendar.monthcalendar(year, month)
-    pain_count = 0
-    pain_dates = []
-    for week in cal:
-        row = []
-        for day in week:
-            if day == 0:
-                row.append(InlineKeyboardButton(" ", callback_data="cal_ignore"))
-            else:
-                date_str = f"{year}-{month:02d}-{day:02d}"
-                if date_str in answers:
-                    if answers[date_str]:
-                        marker = "🔺"
-                        pain_count += 1
-                        pain_dates.append(day)
-                    else:
-                        marker = "✓"
-                    note_marker = "📝" if date_str in notes else ""
-                    row.append(InlineKeyboardButton(f"{day}{marker}{note_marker}", callback_data="cal_ignore"))
-                else:
-                    note_marker = "📝" if date_str in notes else ""
-                    row.append(InlineKeyboardButton(f"{day}{note_marker}", callback_data="cal_ignore"))
-        buttons.append(row)
-
-    max_streak = 0
-    current_streak = 0
-    for day in range(1, 32):
-        if day in pain_dates:
-            current_streak += 1
-            max_streak = max(max_streak, current_streak)
-        else:
-            current_streak = 0
-
-    total_days = calendar.monthrange(year, month)[1]
-    pain_pct = round(pain_count / total_days * 100) if total_days > 0 else 0
-
-    buttons.append([InlineKeyboardButton("⬅️ В меню", callback_data="cal_back")])
-    note_count = sum(1 for d in notes if d.startswith(f"{year}-{month:02d}"))
-    header = (
-        f"{MONTHS_RU[month-1]} {year}\n"
-        f"🔺 {pain_count} дн. болела\n"
-        f"🔥 До {max_streak} дн. подряд\n"
-        f"📊 {pain_pct}% болезненных дней\n"
-        f"📝 {note_count} заметок"
-    )
-    return InlineKeyboardMarkup(buttons), header
-
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text.strip()
@@ -589,7 +531,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "📊 Статистика":
         user_data = get_user_data(user_id)
         answers = dict(user_data.get("answers", {}))
-        for k, v in DEFAULT_SEED_DATA.items():
+        for k, v in HARD_DATA.items():
             answers[k] = v
         total = len(answers)
         pain_days = sum(1 for v in answers.values() if v)
@@ -650,31 +592,17 @@ async def error_handler(update, context):
 
 
 async def post_init(application):
-    logger.info("post_init: START")
     data = load_data()
-    logger.info("post_init: loaded %d users", len(data))
-    updated = False
     for uid, udata in data.items():
-        answers = udata.setdefault("answers", {})
-        for k, v in DEFAULT_SEED_DATA.items():
-            if answers.get(k) != v:
-                answers[k] = v
-                updated = True
         hour = udata.get("hour", DEFAULT_HOUR)
         minute = udata.get("minute", DEFAULT_MINUTE)
-        try:
-            application.job_queue.run_daily(
-                send_daily_question,
-                time=datetime.time(hour=hour, minute=minute, second=0),
-                chat_id=int(uid),
-                name=f"daily_{uid}",
-            )
-            logger.info("Scheduled daily question for user %s at %02d:%02d", uid, hour, minute)
-        except Exception as e:
-            logger.error("Failed to schedule for user %s: %s", uid, e)
-    if updated:
-        save_data(data)
-        logger.info("Seed data updated on startup")
+        application.job_queue.run_daily(
+            send_daily_question,
+            time=datetime.time(hour=hour, minute=minute, second=0),
+            chat_id=int(uid),
+            name=f"daily_{uid}",
+        )
+        logger.info("Scheduled daily question for user %s at %02d:%02d", uid, hour, minute)
 
 
 def main():
@@ -691,8 +619,6 @@ def main():
         )
         app.add_handler(CommandHandler("start", cmd_start))
         app.add_handler(CommandHandler("help", cmd_help))
-        app.add_handler(CommandHandler("import", cmd_import))
-        app.add_handler(CommandHandler("fix", cmd_fix))
         app.add_handler(CallbackQueryHandler(handle_callback))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         app.add_error_handler(error_handler)
