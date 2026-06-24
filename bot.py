@@ -80,8 +80,13 @@ def get_user_data(user_id):
     if "minute" not in data[uid]:
         data[uid]["minute"] = DEFAULT_MINUTE
     answers = data[uid].setdefault("answers", {})
+    changed = False
     for k, v in DEFAULT_SEED_DATA.items():
-        answers[k] = v
+        if answers.get(k) != v:
+            answers[k] = v
+            changed = True
+    if changed:
+        save_data(data)
     return data[uid]
 
 
