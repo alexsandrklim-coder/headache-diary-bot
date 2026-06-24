@@ -75,6 +75,7 @@ def get_user_data(user_id):
     if uid not in data:
         data[uid] = {"answers": DEFAULT_SEED_DATA.copy(), "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
         save_data(data)
+        logger.info("Created new user %s with seed data", uid)
     if "hour" not in data[uid]:
         data[uid]["hour"] = DEFAULT_HOUR
     if "minute" not in data[uid]:
@@ -83,17 +84,21 @@ def get_user_data(user_id):
     changed = False
     for k, v in DEFAULT_SEED_DATA.items():
         if answers.get(k) != v:
+            logger.info("User %s: overwriting %s from %s to %s", uid, k, answers.get(k), v)
             answers[k] = v
             changed = True
     if changed:
         save_data(data)
+        logger.info("User %s: seed data updated and saved (%d answers)", uid, len(answers))
     return data[uid]
 
 
 def save_user_data(user_id, user_data):
     data = load_data()
-    data[str(user_id)] = user_data
+    uid = str(user_id)
+    data[uid] = user_data
     save_data(data)
+    logger.info("User %s: saved %d answers", uid, len(user_data.get("answers", {})))
 
 
 def get_user_time(user_id):
@@ -263,6 +268,21 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "ℹ️ Помощь — эта справка".format(
             hour=hour, minute=minute
         ),
+        reply_markup=get_main_keyboard(),
+    )
+
+
+async def cmd_fix(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    uid = str(user_id)
+    data = load_data()
+    if uid not in data:
+        data[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
+    data[uid]["answers"] = DEFAULT_SEED_DATA.copy()
+    save_data(data)
+    logger.info("User %s: /fix — forced %d seed answers", uid, len(DEFAULT_SEED_DATA))
+    await update.message.reply_text(
+        "✅ Данные сброшены!\nВсе даты обновлены по эталону.\n\nНажми «📋 Календарь» для проверки.",
         reply_markup=get_main_keyboard(),
     )
 
@@ -627,6 +647,7 @@ async def error_handler(update, context):
 
 async def post_init(application):
     data = load_data()
+    logger.info("post_init: loaded %d users", len(data))
     updated = False
     for uid, udata in data.items():
         answers = udata.setdefault("answers", {})
@@ -663,6 +684,7 @@ def main():
         app.add_handler(CommandHandler("start", cmd_start))
         app.add_handler(CommandHandler("help", cmd_help))
         app.add_handler(CommandHandler("import", cmd_import))
+        app.add_handler(CommandHandler("fix", cmd_fix))
         app.add_handler(CallbackQueryHandler(handle_callback))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         app.add_error_handler(error_handler)
