@@ -79,8 +79,9 @@ def get_user_data(user_id):
         data[uid]["hour"] = DEFAULT_HOUR
     if "minute" not in data[uid]:
         data[uid]["minute"] = DEFAULT_MINUTE
+    answers = data[uid].setdefault("answers", {})
     for k, v in DEFAULT_SEED_DATA.items():
-        data[uid].setdefault("answers", {})[k] = v
+        answers[k] = v
     return data[uid]
 
 
@@ -186,17 +187,17 @@ DEFAULT_SEED_DATA = {
     "2026-05-11": False,
     "2026-05-12": False,
     "2026-05-13": False,
-    "2026-05-14": False,
-    "2026-05-15": False,
+    "2026-05-14": True,
+    "2026-05-15": True,
     "2026-05-16": False,
-    "2026-05-17": True,
-    "2026-05-18": False,
+    "2026-05-17": False,
+    "2026-05-18": True,
     "2026-05-19": False,
-    "2026-05-20": True,
-    "2026-05-21": True,
-    "2026-05-22": True,
+    "2026-05-20": False,
+    "2026-05-21": False,
+    "2026-05-22": False,
     "2026-05-23": False,
-    "2026-05-24": True,
+    "2026-05-24": False,
     "2026-05-25": False,
     "2026-05-26": True,
     "2026-05-27": False,
