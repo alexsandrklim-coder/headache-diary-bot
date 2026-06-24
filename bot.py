@@ -571,12 +571,39 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         pain_pct = round(pain_days / total * 100)
+
+        monthly = {}
+        for date_str, has_pain in answers.items():
+            try:
+                ym = date_str[:7]
+            except Exception:
+                continue
+            if ym not in monthly:
+                monthly[ym] = {"pain": 0, "total": 0}
+            monthly[ym]["total"] += 1
+            if has_pain:
+                monthly[ym]["pain"] += 1
+
+        month_lines = []
+        for ym in sorted(monthly.keys()):
+            m = monthly[ym]
+            year, month = ym.split("-")
+            month_name = MONTHS_RU[int(month) - 1]
+            pct = round(m["pain"] / m["total"] * 100) if m["total"] > 0 else 0
+            month_lines.append(
+                "  {name} {year}: {pain}/{total} ({pct}%)".format(
+                    name=month_name, year=year, pain=m["pain"], total=m["total"], pct=pct
+                )
+            )
+
         msg = (
             "📊 Статистика:\n\n"
             "Всего дней: {total}\n"
             "😣 Болела голова: {pain} ({pct}%)\n"
-            "😊 Не болела: {no_pain}".format(
-                total=total, pain=pain_days, pct=pain_pct, no_pain=no_pain_days
+            "😊 Не болела: {no_pain}\n\n"
+            "Головные боли в месяц:\n{months}".format(
+                total=total, pain=pain_days, pct=pain_pct, no_pain=no_pain_days,
+                months="\n".join(month_lines)
             )
         )
         await update.message.reply_text(msg, reply_markup=get_main_keyboard())
