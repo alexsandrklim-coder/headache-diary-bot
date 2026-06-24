@@ -164,9 +164,7 @@ async def reschedule_user_job(context, user_id, hour, minute):
 
 def get_calendar_keyboard(user_id, year, month):
     user_data = get_user_data(user_id)
-    answers = dict(user_data.get("answers", {}))
-    for k, v in HARD_DATA.items():
-        answers[k] = v
+    answers = dict(HARD_DATA)
     notes = user_data.get("notes", {})
 
     prev_month = month - 1 if month > 1 else 12
@@ -469,9 +467,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text == "📊 Статистика":
         user_data = get_user_data(user_id)
-        answers = dict(user_data.get("answers", {}))
-        for k, v in HARD_DATA.items():
-            answers[k] = v
+        answers = dict(HARD_DATA)
         total = len(answers)
         pain_days = sum(1 for v in answers.values() if v)
         no_pain_days = total - pain_days
