@@ -144,8 +144,11 @@ def get_user_data(user_id):
 
 
 def save_user_data(user_id, user_data):
+    clean = dict(user_data)
+    clean_answers = {k: v for k, v in clean.get("answers", {}).items() if k not in HARD_DATA}
+    clean["answers"] = clean_answers
     data = load_data()
-    data[str(user_id)] = user_data
+    data[str(user_id)] = clean
     save_data(data)
 
 
@@ -293,8 +296,12 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     hour, minute = get_user_time(user_id)
 
-    user_data = get_user_data(user_id)
-    save_user_data(user_id, user_data)
+    data = load_data()
+    uid = str(user_id)
+    if uid not in data:
+        data[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
+        save_data(data)
+    user_data = data[uid]
 
     await reschedule_user_job(context, user_id, hour, minute)
 
@@ -366,11 +373,15 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         has_pain = parts[1] == "yes"
         date_str = parts[2]
 
-        user_data = get_user_data(user_id)
+        data_dict = load_data()
+        uid = str(user_id)
+        if uid not in data_dict:
+            data_dict[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
+        user_data = data_dict[uid]
         if "answers" not in user_data:
             user_data["answers"] = {}
         user_data["answers"][date_str] = has_pain
-        save_user_data(user_id, user_data)
+        save_data(data_dict)
 
         emoji = "😣" if has_pain else "😊"
         text = "{emoji} Записал: {date} — {status}".format(
@@ -400,9 +411,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         if action == "yes":
-            user_data = get_user_data(user_id)
-            user_data["note_pending"] = date_str
-            save_user_data(user_id, user_data)
+            data_dict = load_data()
+            uid = str(user_id)
+            if uid not in data_dict:
+                data_dict[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
+            data_dict[uid]["note_pending"] = date_str
+            save_data(data_dict)
             await _safe_edit(query, "Напиши заметку:")
             return
 
