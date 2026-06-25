@@ -212,13 +212,14 @@ async def reschedule_user_job(context, user_id, hour, minute):
     current_jobs = job_queue.get_jobs_by_name(job_name)
     for job in current_jobs:
         job.schedule_removal()
+    utc_hour = (hour - 3) % 24
     job_queue.run_daily(
         send_daily_question,
-        time=datetime.time(hour=hour, minute=minute, second=0),
+        time=datetime.time(hour=utc_hour, minute=minute, second=0),
         chat_id=user_id,
         name=job_name,
     )
-    logger.info("Rescheduled daily question for user %s at %02d:%02d", user_id, hour, minute)
+    logger.info("Rescheduled daily question for user %s at %02d:%02d MSK (UTC %02d:%02d)", user_id, hour, minute, utc_hour, minute)
 
 
 def get_calendar_keyboard(user_id, year, month):
@@ -607,13 +608,14 @@ async def post_init(application):
     for uid, udata in data.items():
         hour = udata.get("hour", DEFAULT_HOUR)
         minute = udata.get("minute", DEFAULT_MINUTE)
+        utc_hour = (hour - 3) % 24
         application.job_queue.run_daily(
             send_daily_question,
-            time=datetime.time(hour=hour, minute=minute, second=0),
+            time=datetime.time(hour=utc_hour, minute=minute, second=0),
             chat_id=int(uid),
             name=f"daily_{uid}",
         )
-        logger.info("Scheduled daily question for user %s at %02d:%02d", uid, hour, minute)
+        logger.info("Scheduled daily question for user %s at %02d:%02d MSK (UTC %02d:%02d)", uid, hour, minute, utc_hour, minute)
 
 
 def main():
