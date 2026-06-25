@@ -330,9 +330,12 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_daily_question(context: ContextTypes.DEFAULT_TYPE):
     chat_id = context.job.chat_id
     yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
-    user_data = get_user_data(chat_id)
 
-    if yesterday in user_data.get("answers", {}):
+    data = load_data()
+    uid = str(chat_id)
+    raw_answers = data.get(uid, {}).get("answers", {})
+
+    if yesterday in raw_answers:
         return
 
     keyboard = InlineKeyboardMarkup([
