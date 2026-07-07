@@ -271,6 +271,7 @@ def save_user_data(user_id, user_data):
     clean = dict(user_data)
     clean_answers = {k: v for k, v in clean.get("answers", {}).items() if k not in HARD_DATA}
     clean["answers"] = clean_answers
+    logger.info("save_user_data: keys=%s, notes_count=%s", list(clean.keys()), len(clean.get("notes", {})))
     data = load_data()
     data[str(user_id)] = clean
     save_data(data)
@@ -480,7 +481,9 @@ def generate_report(user_id, date_start, date_end):
     data_dict = load_data()
     uid = str(user_id)
     user_info = data_dict.get(uid, {})
+    logger.info("Report: uid=%s, keys=%s", uid, list(user_info.keys()))
     notes = user_info.get("notes", {})
+    logger.info("Report: notes keys=%s", list(notes.keys()) if notes else "EMPTY")
     answers = dict(HARD_DATA)
     file_answers = user_info.get("answers", {})
     answers.update(file_answers)
@@ -845,6 +848,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_data["notes"][note_pending] = text
         user_data.pop("note_pending", None)
         save_user_data(user_id, user_data)
+        logger.info("Saved note for %s: %s", note_pending, text[:50])
         await update.message.reply_text(
             "✅ Заметка к {date} сохранена.".format(
                 date=datetime.datetime.strptime(note_pending, "%Y-%m-%d").strftime("%d.%m.%Y")
