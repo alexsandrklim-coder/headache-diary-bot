@@ -6,6 +6,10 @@ import datetime
 import logging
 import tempfile
 import threading
+import tempfile as _tf
+from docx import Document
+from docx.shared import Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 from telegram.error import TimedOut, NetworkError
@@ -358,9 +362,9 @@ def get_calendar_keyboard(user_id, year, month):
                         pain_dates.append(day)
                     else:
                         marker = "✓"
-                    row.append(InlineKeyboardButton(f"{day}{marker}", callback_data="cal_ignore"))
+                    row.append(InlineKeyboardButton(f"{day}{marker}", callback_data=f"cal_day_{year}_{month}_{day}"))
                 else:
-                    row.append(InlineKeyboardButton(f"{day}", callback_data="cal_ignore"))
+                    row.append(InlineKeyboardButton(f"{day}", callback_data=f"cal_day_{year}_{month}_{day}"))
         buttons.append(row)
 
     max_streak = 0
@@ -375,15 +379,160 @@ def get_calendar_keyboard(user_id, year, month):
     total_days = calendar.monthrange(year, month)[1]
     pain_pct = round(pain_count / total_days * 100) if total_days > 0 else 0
 
+    note_count = sum(1 for d in notes if d.startswith(f"{year}-{month:02d}"))
+    buttons.append([
+        InlineKeyboardButton("📝 Отчёт", callback_data=f"cal_report_{year}_{month}"),
+    ])
     buttons.append([InlineKeyboardButton("⬅️ В меню", callback_data="cal_back")])
 
     header = (
         f"{MONTHS_RU[month-1]} {year}\n"
         f"🔺 {pain_count} дн. болела\n"
         f"🔥 До {max_streak} дн. подряд\n"
-        f"📊 {pain_pct}% болезненных дней"
+        f"📊 {pain_pct}% болезненных дней\n"
+        f"📝 {note_count} заметок"
     )
     return InlineKeyboardMarkup(buttons), header
+
+
+def get_report_calendar_keyboard(user_id, year, month, selected_start):
+    user_data = get_user_data(user_id)
+    answers = dict(HARD_DATA)
+    data_dict = load_data()
+    uid = str(user_id)
+    file_answers = data_dict.get(uid, {}).get("answers", {})
+    answers.update(file_answers)
+    notes = user_data.get("notes", {})
+
+    prev_month = month - 1 if month > 1 else 12
+    prev_year = year if month > 1 else year - 1
+    next_month = month + 1 if month < 12 else 1
+    next_year = year if month < 12 else year + 1
+
+    buttons = []
+    buttons.append([
+        InlineKeyboardButton(f"◀ {MONTHS_RU[prev_month-1]}", callback_data=f"cal_prev_{year}_{month}"),
+        InlineKeyboardButton(f"{MONTHS_RU[month-1]} {year}", callback_data="cal_ignore"),
+        InlineKeyboardButton(f"{MONTHS_RU[next_month-1]} ▶", callback_data=f"cal_next_{year}_{month}"),
+    ])
+    buttons.append([
+        InlineKeyboardButton("Пн", callback_data="cal_ignore"),
+        InlineKeyboardButton("Вт", callback_data="cal_ignore"),
+        InlineKeyboardButton("Ср", callback_data="cal_ignore"),
+        InlineKeyboardButton("Чт", callback_data="cal_ignore"),
+        InlineKeyboardButton("Пт", callback_data="cal_ignore"),
+        InlineKeyboardButton("Сб", callback_data="cal_ignore"),
+        InlineKeyboardButton("Вс", callback_data="cal_ignore"),
+    ])
+
+    cal = calendar.monthcalendar(year, month)
+    for week in cal:
+        row = []
+        for day in week:
+            if day == 0:
+                row.append(InlineKeyboardButton(" ", callback_data="cal_ignore"))
+            else:
+                date_str = f"{year}-{month:02d}-{day:02d}"
+                note_marker = "📝" if date_str in notes else ""
+                if selected_start and date_str == selected_start:
+                    row.append(InlineKeyboardButton(f"🟢{day}{note_marker}", callback_data=f"cal_day_{year}_{month}_{day}"))
+                else:
+                    row.append(InlineKeyboardButton(f"{day}{note_marker}", callback_data=f"cal_day_{year}_{month}_{day}"))
+        buttons.append(row)
+
+    buttons.append([InlineKeyboardButton("⬅️ В меню", callback_data="cal_back")])
+    header = f"📝 Выбор периода для отчёта\n{MONTHS_RU[month-1]} {year}"
+    return InlineKeyboardMarkup(buttons), header
+
+
+def generate_report(user_id, date_start, date_end):
+    data_dict = load_data()
+    uid = str(user_id)
+    user_info = data_dict.get(uid, {})
+    notes = user_info.get("notes", {})
+    answers = dict(HARD_DATA)
+    file_answers = user_info.get("answers", {})
+    answers.update(file_answers)
+
+    d_start = datetime.datetime.strptime(date_start, "%Y-%m-%d").date()
+    d_end = datetime.datetime.strptime(date_end, "%Y-%m-%d").date()
+
+    report_notes = {}
+    for date_str, note_text in notes.items():
+        try:
+            d = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+            if d_start <= d <= d_end:
+                report_notes[date_str] = note_text
+        except Exception:
+            continue
+
+    if not report_notes:
+        return None
+
+    doc = Document()
+    style = doc.styles['Normal']
+    font = style.font
+    font.name = 'Arial'
+    font.size = Pt(11)
+
+    title = doc.add_heading('Отчёт по головной боли', level=0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run(f"Период: {d_start.strftime('%d.%m.%Y')} — {d_end.strftime('%d.%m.%Y')}")
+    run.font.size = Pt(10)
+    run.font.color.rgb = RGBColor(100, 100, 100)
+
+    doc.add_paragraph()
+
+    pain_count = 0
+    total_days = 0
+    current = d_start
+    while current <= d_end:
+        date_str = current.strftime("%Y-%m-%d")
+        if date_str in answers:
+            total_days += 1
+            if answers[date_str]:
+                pain_count += 1
+        current += datetime.timedelta(days=1)
+
+    pain_pct = round(pain_count / total_days * 100) if total_days > 0 else 0
+
+    doc.add_heading('Статистика', level=1)
+    doc.add_paragraph(f"Всего дней в периоде: {total_days}")
+    doc.add_paragraph(f"Дней с головной болью: {pain_count} ({pain_pct}%)")
+    doc.add_paragraph(f"Дней без боли: {total_days - pain_count}")
+    doc.add_paragraph()
+
+    doc.add_heading('Заметки', level=1)
+
+    sorted_dates = sorted(report_notes.keys())
+    for date_str in sorted_dates:
+        try:
+            d = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+            date_display = d.strftime("%d.%m.%Y")
+        except Exception:
+            date_display = date_str
+
+        pain_status = ""
+        if date_str in answers:
+            pain_status = " — болела голова" if answers[date_str] else " — не болела"
+
+        doc.add_heading(f"{date_display}{pain_status}", level=2)
+        doc.add_paragraph(report_notes[date_str])
+
+    doc.add_paragraph()
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    run = p.add_run(f"Создано: {datetime.datetime.now().strftime('%d.%m.%Y %H:%M')}")
+    run.font.size = Pt(8)
+    run.font.color.rgb = RGBColor(150, 150, 150)
+
+    tmp = _tf.NamedTemporaryFile(delete=False, suffix=".docx")
+    doc.save(tmp.name)
+    tmp.close()
+    return tmp.name
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -540,6 +689,64 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data == "cal_ignore":
+        return
+
+    if data.startswith("cal_report_"):
+        parts = data.split("_")
+        year = int(parts[2])
+        month = int(parts[3])
+        data_dict = load_data()
+        uid = str(user_id)
+        data_dict.setdefault(uid, {})
+        data_dict[uid]["report_start"] = None
+        data_dict[uid]["report_year"] = year
+        data_dict[uid]["report_month"] = month
+        save_data(data_dict)
+        keyboard, header = get_report_calendar_keyboard(user_id, year, month, None)
+        await _safe_edit(query, f"📝 Выбери начальную дату:\n{header}", reply_markup=keyboard)
+        return
+
+    if data.startswith("cal_day_"):
+        parts = data.split("_")
+        year = int(parts[2])
+        month = int(parts[3])
+        day = int(parts[4])
+        data_dict = load_data()
+        uid = str(user_id)
+        user_info = data_dict.get(uid, {})
+        report_start = user_info.get("report_start")
+        report_year = user_info.get("report_year")
+        report_month = user_info.get("report_month")
+
+        if report_start is not None and report_year == year and report_month == month:
+            date_start = report_start
+            date_end = f"{year}-{month:02d}-{day:02d}"
+            if date_start > date_end:
+                date_start, date_end = date_end, date_start
+            data_dict[uid].pop("report_start", None)
+            data_dict[uid].pop("report_year", None)
+            data_dict[uid].pop("report_month", None)
+            save_data(data_dict)
+            docx_path = generate_report(user_id, date_start, date_end)
+            if docx_path:
+                await _safe_edit(query, f"📝 Отчёт за период:\n{date_start} — {date_end}")
+                with open(docx_path, "rb") as f:
+                    await query.message.reply_document(
+                        document=f,
+                        filename="Отчёт.docx",
+                        caption=f"Отчёт за {date_start} — {date_end}",
+                    )
+                os.remove(docx_path)
+            else:
+                await _safe_edit(query, "Нет заметок за выбранный период.")
+            await _safe_reply(query.message, "Выбери действие:", reply_markup=get_main_keyboard())
+        else:
+            data_dict[uid]["report_start"] = f"{year}-{month:02d}-{day:02d}"
+            data_dict[uid]["report_year"] = year
+            data_dict[uid]["report_month"] = month
+            save_data(data_dict)
+            keyboard, header = get_report_calendar_keyboard(user_id, year, month, f"{year}-{month:02d}-{day:02d}")
+            await _safe_edit(query, f"📝 Начало: {day}.{month:02d}.{year}\nВыбери конечную дату:\n{header}", reply_markup=keyboard)
         return
 
     if data.startswith("set_"):
