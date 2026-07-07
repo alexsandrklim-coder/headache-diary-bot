@@ -940,9 +940,6 @@ async def error_handler(update, context):
 
 
 async def post_init(application):
-    if os.path.exists(DATA_FILE):
-        os.remove(DATA_FILE)
-        logger.info("Deleted headache_data.json on startup")
     data = load_data()
     for uid, udata in data.items():
         hour = udata.get("hour", DEFAULT_HOUR)
@@ -959,9 +956,6 @@ async def post_init(application):
 
 def main():
     logger.info("Bot starting... v4 May=%d", len(HARD_DATA))
-    if os.path.exists(DATA_FILE):
-        os.remove(DATA_FILE)
-        logger.info("Deleted headache_data.json")
     try:
         app = (
             ApplicationBuilder()
