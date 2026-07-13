@@ -694,6 +694,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 data_dict[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
             data_dict[uid]["note_pending"] = date_str
             save_data(data_dict)
+            logger.info("Set note_pending=%s for uid=%s", date_str, uid)
             await _safe_edit(query, "Напиши заметку:")
             return
 
@@ -842,6 +843,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_data = get_user_data(user_id)
     note_pending = user_data.get("note_pending")
+    logger.info("handle_message: uid=%s, note_pending=%s, keys=%s", user_id, note_pending, list(user_data.keys()))
     if note_pending:
         if "notes" not in user_data:
             user_data["notes"] = {}
