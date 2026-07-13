@@ -29,7 +29,7 @@ if not BOT_TOKEN:
     logger.error("TELEGRAM_BOT_TOKEN environment variable is not set!")
     sys.exit(1)
 
-DATA_DIR = os.path.dirname(__file__)
+DATA_DIR = "/app/data" if os.path.exists("/app/data") else os.path.dirname(__file__)
 DATA_FILE = os.path.join(DATA_DIR, "headache_data.json")
 _file_lock = threading.Lock()
 
