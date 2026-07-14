@@ -263,7 +263,8 @@ def get_user_data(user_id):
         data[uid]["minute"] = DEFAULT_MINUTE
     answers = data[uid].setdefault("answers", {})
     for k, v in HARD_DATA.items():
-        answers[k] = v
+        if k not in answers:
+            answers[k] = v
     return data[uid]
 
 
