@@ -593,6 +593,44 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def cmd_setpain(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    args = context.args
+    if not args or len(args) < 2:
+        await update.message.reply_text(
+            "Использование: /setpain ДД.ММ.ГГГГ да/нет\n"
+            "Пример: /setpain 13.07.2026 да"
+        )
+        return
+
+    date_str_raw = args[0]
+    pain_str = args[1].lower()
+
+    try:
+        date_obj = datetime.datetime.strptime(date_str_raw, "%d.%m.%Y").date()
+    except ValueError:
+        await update.message.reply_text("Неверный формат даты. Используй ДД.ММ.ГГГГ")
+        return
+
+    has_pain = pain_str in ("да", "yes", "1", "true")
+    date_key = date_obj.strftime("%Y-%m-%d")
+
+    data_dict = load_data()
+    uid = str(user_id)
+    if uid not in data_dict:
+        data_dict[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
+    if "answers" not in data_dict[uid]:
+        data_dict[uid]["answers"] = {}
+    data_dict[uid]["answers"][date_key] = has_pain
+    save_data(data_dict)
+
+    status = "болела голова" if has_pain else "не болела"
+    await update.message.reply_text(
+        f"✅ {date_str_raw} — {status}",
+        reply_markup=get_main_keyboard(),
+    )
+
+
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     hour, minute = get_user_time(user_id)
@@ -971,6 +1009,7 @@ def main():
         )
         app.add_handler(CommandHandler("start", cmd_start))
         app.add_handler(CommandHandler("help", cmd_help))
+        app.add_handler(CommandHandler("setpain", cmd_setpain))
         app.add_handler(CallbackQueryHandler(handle_callback))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         app.add_error_handler(error_handler)
