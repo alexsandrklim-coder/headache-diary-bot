@@ -62,7 +62,7 @@ HARD_DATA = {
     "2026-06-18": True, "2026-06-23": True, "2026-06-24": True,
     "2026-07-03": True, "2026-07-04": True, "2026-07-06": True,
     "2026-07-09": True, "2026-07-11": True, "2026-07-12": True,
-    "2026-07-13": True, "2026-07-16": True,
+    "2026-07-13": True, "2026-07-16": True, "2026-07-19": True,
 }
 
 
@@ -812,7 +812,14 @@ async def error_handler(update, context):
 
 async def post_init(application):
     data = load_data()
+    fixed = False
     for uid, udata in data.items():
+        answers = udata.get("answers", {})
+        for date_key, hard_val in HARD_DATA.items():
+            if hard_val and answers.get(date_key) is False:
+                del answers[date_key]
+                fixed = True
+                logger.info("Fixed: removed False for %s (HARD_DATA=True)", date_key)
         hour = udata.get("hour", DEFAULT_HOUR)
         minute = udata.get("minute", DEFAULT_MINUTE)
         utc_hour = (hour - 3) % 24
@@ -823,10 +830,13 @@ async def post_init(application):
             name=f"daily_{uid}",
         )
         logger.info("Scheduled daily question for user %s at %02d:%02d MSK (UTC %02d:%02d)", uid, hour, minute, utc_hour, minute)
+    if fixed:
+        save_data(data)
+        logger.info("Saved data after fixing False entries")
 
 
 def main():
-    logger.info("Bot starting... v5 May=%d", len(HARD_DATA))
+    logger.info("Bot starting... v6 Jul-fix=%d", len(HARD_DATA))
     try:
         app = (
             ApplicationBuilder()
