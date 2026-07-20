@@ -244,7 +244,9 @@ def load_data():
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
                 result = json.load(f)
-                logger.info("load_data: loaded %d users", len(result))
+                logger.info("load_data: loaded %d users, keys=%s", len(result), list(result.keys()))
+                for uid, udata in result.items():
+                    logger.info("load_data: uid=%s, keys=%s", uid, list(udata.keys()))
                 return result
         except (json.JSONDecodeError, OSError) as e:
             logger.error("load_data: error reading %s: %s", DATA_FILE, e)
@@ -358,10 +360,13 @@ def get_calendar_keyboard(user_id, year, month):
     answers = dict(HARD_DATA)
     data_dict = load_data()
     uid = str(user_id)
-    file_answers = data_dict.get(uid, {}).get("answers", {})
+    user_info = data_dict.get(uid, {})
+    logger.info("Calendar: uid=%s, user_info_keys=%s", uid, list(user_info.keys()))
+    file_answers = user_info.get("answers", {})
+    logger.info("Calendar: file_answers=%s", file_answers)
     answers.update(file_answers)
     notes = user_data.get("notes", {})
-    logger.info("Calendar: uid=%s, file_answers=%s, notes=%s", uid, file_answers, list(notes.keys()) if notes else [])
+    logger.info("Calendar: notes=%s", list(notes.keys()) if notes else [])
 
     prev_month = month - 1 if month > 1 else 12
     prev_year = year if month > 1 else year - 1
