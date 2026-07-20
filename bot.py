@@ -42,181 +42,27 @@ MONTHS_RU = [
 ]
 
 HARD_DATA = {
-    "2026-02-01": False,
-    "2026-02-02": False,
-    "2026-02-03": False,
-    "2026-02-04": False,
-    "2026-02-05": False,
-    "2026-02-06": False,
-    "2026-02-07": False,
-    "2026-02-08": False,
-    "2026-02-09": False,
-    "2026-02-10": False,
-    "2026-02-11": False,
-    "2026-02-12": False,
-    "2026-02-13": False,
-    "2026-02-14": False,
-    "2026-02-15": False,
-    "2026-02-16": False,
-    "2026-02-17": False,
-    "2026-02-18": False,
-    "2026-02-19": True,
-    "2026-02-20": False,
-    "2026-02-21": False,
-    "2026-02-22": True,
-    "2026-02-23": True,
-    "2026-02-24": True,
-    "2026-02-25": False,
-    "2026-02-26": True,
-    "2026-02-27": False,
-    "2026-02-28": False,
-    "2026-03-01": False,
-    "2026-03-02": False,
-    "2026-03-03": False,
-    "2026-03-04": False,
-    "2026-03-05": True,
-    "2026-03-06": False,
-    "2026-03-07": True,
-    "2026-03-08": False,
-    "2026-03-09": False,
-    "2026-03-10": False,
-    "2026-03-11": False,
-    "2026-03-12": True,
-    "2026-03-13": False,
-    "2026-03-14": False,
-    "2026-03-15": True,
-    "2026-03-16": False,
-    "2026-03-17": True,
-    "2026-03-18": True,
-    "2026-03-19": False,
-    "2026-03-20": True,
-    "2026-03-21": False,
-    "2026-03-22": True,
-    "2026-03-23": True,
-    "2026-03-24": False,
-    "2026-03-25": False,
-    "2026-03-26": True,
-    "2026-03-27": False,
-    "2026-03-28": True,
-    "2026-03-29": False,
-    "2026-03-30": False,
-    "2026-03-31": True,
-    "2026-04-01": True,
-    "2026-04-02": True,
-    "2026-04-03": True,
-    "2026-04-04": True,
-    "2026-04-05": False,
-    "2026-04-06": False,
-    "2026-04-07": True,
-    "2026-04-08": True,
-    "2026-04-09": False,
-    "2026-04-10": False,
-    "2026-04-11": True,
-    "2026-04-12": False,
-    "2026-04-13": False,
-    "2026-04-14": True,
-    "2026-04-15": True,
-    "2026-04-16": False,
-    "2026-04-17": False,
-    "2026-04-18": True,
-    "2026-04-19": True,
-    "2026-04-20": False,
-    "2026-04-21": False,
-    "2026-04-22": False,
-    "2026-04-23": False,
-    "2026-04-24": True,
+    "2026-02-19": True, "2026-02-22": True, "2026-02-23": True,
+    "2026-02-24": True, "2026-02-26": True,
+    "2026-03-05": True, "2026-03-07": True, "2026-03-12": True,
+    "2026-03-15": True, "2026-03-17": True, "2026-03-18": True,
+    "2026-03-20": True, "2026-03-22": True, "2026-03-23": True,
+    "2026-03-26": True, "2026-03-28": True, "2026-03-31": True,
+    "2026-04-01": True, "2026-04-02": True, "2026-04-03": True,
+    "2026-04-04": True, "2026-04-07": True, "2026-04-08": True,
+    "2026-04-11": True, "2026-04-14": True, "2026-04-15": True,
+    "2026-04-18": True, "2026-04-19": True, "2026-04-24": True,
     "2026-04-25": True,
-    "2026-04-26": False,
-    "2026-04-27": False,
-    "2026-04-28": False,
-    "2026-04-29": False,
-    "2026-04-30": False,
-    "2026-05-01": True,
-    "2026-05-02": False,
-    "2026-05-03": False,
-    "2026-05-04": True,
-    "2026-05-05": False,
-    "2026-05-06": False,
-    "2026-05-07": True,
-    "2026-05-08": False,
-    "2026-05-09": True,
-    "2026-05-10": False,
-    "2026-05-11": False,
-    "2026-05-12": False,
-    "2026-05-13": False,
-    "2026-05-14": False,
-    "2026-05-15": False,
-    "2026-05-16": False,
-    "2026-05-17": True,
-    "2026-05-18": False,
-    "2026-05-19": False,
-    "2026-05-20": True,
-    "2026-05-21": True,
-    "2026-05-22": True,
-    "2026-05-23": False,
-    "2026-05-24": True,
-    "2026-05-25": False,
-    "2026-05-26": True,
-    "2026-05-27": False,
-    "2026-05-28": True,
-    "2026-05-29": True,
-    "2026-05-30": False,
-    "2026-05-31": False,
-    "2026-06-01": False,
-    "2026-06-02": False,
-    "2026-06-03": False,
-    "2026-06-04": True,
-    "2026-06-05": True,
-    "2026-06-06": True,
-    "2026-06-07": False,
-    "2026-06-08": False,
-    "2026-06-09": True,
-    "2026-06-10": False,
-    "2026-06-11": False,
-    "2026-06-12": False,
-    "2026-06-13": False,
-    "2026-06-14": True,
-    "2026-06-15": True,
-    "2026-06-16": False,
-    "2026-06-17": False,
-    "2026-06-18": True,
-    "2026-06-19": False,
-    "2026-06-20": False,
-    "2026-06-21": False,
-    "2026-06-22": False,
-    "2026-06-23": True,
-    "2026-06-24": True,
-    "2026-07-01": False,
-    "2026-07-02": False,
-    "2026-07-03": True,
-    "2026-07-04": True,
-    "2026-07-05": False,
-    "2026-07-06": True,
-    "2026-07-07": False,
-    "2026-07-08": False,
-    "2026-07-09": True,
-    "2026-07-10": False,
-    "2026-07-11": True,
-    "2026-07-12": True,
-    "2026-07-13": False,
-    "2026-07-14": False,
-    "2026-07-15": False,
-    "2026-07-16": False,
-    "2026-07-17": False,
-    "2026-07-18": False,
-    "2026-07-19": False,
-    "2026-07-20": False,
-    "2026-07-21": False,
-    "2026-07-22": False,
-    "2026-07-23": False,
-    "2026-07-24": False,
-    "2026-07-25": False,
-    "2026-07-26": False,
-    "2026-07-27": False,
-    "2026-07-28": False,
-    "2026-07-29": False,
-    "2026-07-30": False,
-    "2026-07-31": False,
+    "2026-05-01": True, "2026-05-04": True, "2026-05-07": True,
+    "2026-05-09": True, "2026-05-17": True, "2026-05-20": True,
+    "2026-05-21": True, "2026-05-22": True, "2026-05-24": True,
+    "2026-05-26": True, "2026-05-28": True, "2026-05-29": True,
+    "2026-06-04": True, "2026-06-05": True, "2026-06-06": True,
+    "2026-06-09": True, "2026-06-14": True, "2026-06-15": True,
+    "2026-06-18": True, "2026-06-23": True, "2026-06-24": True,
+    "2026-07-03": True, "2026-07-04": True, "2026-07-06": True,
+    "2026-07-09": True, "2026-07-11": True, "2026-07-12": True,
+    "2026-07-13": True, "2026-07-16": True,
 }
 
 
@@ -255,26 +101,18 @@ def get_user_data(user_id):
     data = load_data()
     uid = str(user_id)
     if uid not in data:
-        data[uid] = {"answers": HARD_DATA.copy(), "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
+        data[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
         save_data(data)
     if "hour" not in data[uid]:
         data[uid]["hour"] = DEFAULT_HOUR
     if "minute" not in data[uid]:
         data[uid]["minute"] = DEFAULT_MINUTE
-    answers = data[uid].setdefault("answers", {})
-    for k, v in HARD_DATA.items():
-        if k not in answers:
-            answers[k] = v
     return data[uid]
 
 
 def save_user_data(user_id, user_data):
-    clean = dict(user_data)
     data = load_data()
-    data[str(user_id)] = clean
-    save_data(data)
-    data = load_data()
-    data[str(user_id)] = clean
+    data[str(user_id)] = user_data
     save_data(data)
 
 
@@ -350,11 +188,9 @@ async def reschedule_user_job(context, user_id, hour, minute):
 
 def get_calendar_keyboard(user_id, year, month):
     user_data = get_user_data(user_id)
-    answers = dict(HARD_DATA)
     data_dict = load_data()
     uid = str(user_id)
     file_answers = data_dict.get(uid, {}).get("answers", {})
-    answers.update(file_answers)
     notes = user_data.get("notes", {})
 
     prev_month = month - 1 if month > 1 else 12
@@ -388,16 +224,14 @@ def get_calendar_keyboard(user_id, year, month):
                 row.append(InlineKeyboardButton(" ", callback_data="cal_ignore"))
             else:
                 date_str = f"{year}-{month:02d}-{day:02d}"
-                if date_str in answers:
-                    if answers[date_str]:
-                        marker = "🔺"
-                        pain_count += 1
-                        pain_dates.append(day)
-                    else:
-                        marker = "✓"
-                    row.append(InlineKeyboardButton(f"{day}{marker}", callback_data=f"cal_day_{year}_{month}_{day}"))
+                is_pain = file_answers.get(date_str, HARD_DATA.get(date_str, False))
+                if is_pain:
+                    marker = "🔺"
+                    pain_count += 1
+                    pain_dates.append(day)
                 else:
-                    row.append(InlineKeyboardButton(f"{day}", callback_data=f"cal_day_{year}_{month}_{day}"))
+                    marker = "✓"
+                row.append(InlineKeyboardButton(f"{day}{marker}", callback_data=f"cal_day_{year}_{month}_{day}"))
         buttons.append(row)
 
     max_streak = 0
@@ -430,11 +264,9 @@ def get_calendar_keyboard(user_id, year, month):
 
 def get_report_calendar_keyboard(user_id, year, month, selected_start):
     user_data = get_user_data(user_id)
-    answers = dict(HARD_DATA)
     data_dict = load_data()
     uid = str(user_id)
     file_answers = data_dict.get(uid, {}).get("answers", {})
-    answers.update(file_answers)
     notes = user_data.get("notes", {})
 
     prev_month = month - 1 if month > 1 else 12
@@ -482,12 +314,8 @@ def generate_report(user_id, date_start, date_end):
     data_dict = load_data()
     uid = str(user_id)
     user_info = data_dict.get(uid, {})
-    logger.info("Report: uid=%s, keys=%s", uid, list(user_info.keys()))
     notes = user_info.get("notes", {})
-    logger.info("Report: notes keys=%s", list(notes.keys()) if notes else "EMPTY")
-    answers = dict(HARD_DATA)
     file_answers = user_info.get("answers", {})
-    answers.update(file_answers)
 
     d_start = datetime.datetime.strptime(date_start, "%Y-%m-%d").date()
     d_end = datetime.datetime.strptime(date_end, "%Y-%m-%d").date()
@@ -526,10 +354,10 @@ def generate_report(user_id, date_start, date_end):
     current = d_start
     while current <= d_end:
         date_str = current.strftime("%Y-%m-%d")
-        if date_str in answers:
+        is_pain = file_answers.get(date_str, HARD_DATA.get(date_str, False))
+        if is_pain:
             total_days += 1
-            if answers[date_str]:
-                pain_count += 1
+            pain_count += 1
         current += datetime.timedelta(days=1)
 
     pain_pct = round(pain_count / total_days * 100) if total_days > 0 else 0
@@ -550,9 +378,8 @@ def generate_report(user_id, date_start, date_end):
         except Exception:
             date_display = date_str
 
-        pain_status = ""
-        if date_str in answers:
-            pain_status = " — болела голова" if answers[date_str] else " — не болела"
+        is_pain = file_answers.get(date_str, HARD_DATA.get(date_str, False))
+        pain_status = " — болела голова" if is_pain else " — не болела"
 
         doc.add_heading(f"{date_display}{pain_status}", level=2)
         doc.add_paragraph(report_notes[date_str])
@@ -593,13 +420,35 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    hour, minute = get_user_time(user_id)
+    await update.message.reply_text(
+        "Как пользоваться:\n\n"
+        "Каждый день в {hour}:{minute:02d} я пришлю вопрос: болела ли голова.\n"
+        "Нажми «Да, болела» или «Нет, не болела».\n"
+        "После ответа можно будет добавить заметку.\n\n"
+        "Меню:\n"
+        "📋 Календарь — посмотреть дни за текущий месяц\n"
+        "⚙️ Настройки — изменить время вопроса\n"
+        "📊 Статистика — общая статистика\n"
+        "ℹ️ Помощь — эта справка\n\n"
+        "Команды:\n"
+        "/setpain ДД.ММ.ГГГГ да — отметить боль за дату\n"
+        "/setpain ДД.ММ.ГГГГ нет — снять боль за дату".format(
+            hour=hour, minute=minute
+        ),
+        reply_markup=get_main_keyboard(),
+    )
+
+
 async def cmd_setpain(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     args = context.args
     if not args or len(args) < 2:
         await update.message.reply_text(
             "Использование: /setpain ДД.ММ.ГГГГ да/нет\n"
-            "Пример: /setpain 13.07.2026 да"
+            "Пример: /setpain 19.07.2026 да"
         )
         return
 
@@ -627,25 +476,6 @@ async def cmd_setpain(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status = "болела голова" if has_pain else "не болела"
     await update.message.reply_text(
         f"✅ {date_str_raw} — {status}",
-        reply_markup=get_main_keyboard(),
-    )
-
-
-async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    hour, minute = get_user_time(user_id)
-    await update.message.reply_text(
-        "Как пользоваться:\n\n"
-        "Каждый день в {hour}:{minute:02d} я пришлю вопрос: болела ли голова.\n"
-        "Нажми «Да, болела» или «Нет, не болела».\n"
-        "После ответа можно будет добавить заметку.\n\n"
-        "Меню:\n"
-        "📋 Календарь — посмотреть дни за текущий месяц\n"
-        "⚙️ Настройки — изменить время вопроса\n"
-        "📊 Статистика — общая статистика\n"
-        "ℹ️ Помощь — эта справка".format(
-            hour=hour, minute=minute
-        ),
         reply_markup=get_main_keyboard(),
     )
 
@@ -738,32 +568,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    if data.startswith("cal_prev_") or data.startswith("cal_next_"):
-        parts = data.split("_")
-        year = int(parts[2])
-        month = int(parts[3])
-        if data.startswith("cal_prev_"):
-            month -= 1
-            if month < 1:
-                month = 12
-                year -= 1
-        else:
-            month += 1
-            if month > 12:
-                month = 1
-                year += 1
-        keyboard, header = get_calendar_keyboard(user_id, year, month)
-        await _safe_edit(query, header, reply_markup=keyboard)
-        return
-
-    if data == "cal_back":
-        await _safe_edit(query, "Выбери действие:")
-        await _safe_reply(query.message, "Выбери действие:", reply_markup=get_main_keyboard())
-        return
-
-    if data == "cal_ignore":
-        return
-
     if data.startswith("cal_report_"):
         parts = data.split("_")
         year = int(parts[2])
@@ -820,6 +624,32 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             save_data(data_dict)
             keyboard, header = get_report_calendar_keyboard(user_id, year, month, f"{year}-{month:02d}-{day:02d}")
             await _safe_edit(query, f"📝 Начало: {day}.{month:02d}.{year}\nВыбери конечную дату:\n{header}", reply_markup=keyboard)
+        return
+
+    if data.startswith("cal_prev_") or data.startswith("cal_next_"):
+        parts = data.split("_")
+        year = int(parts[2])
+        month = int(parts[3])
+        if data.startswith("cal_prev_"):
+            month -= 1
+            if month < 1:
+                month = 12
+                year -= 1
+        else:
+            month += 1
+            if month > 12:
+                month = 1
+                year += 1
+        keyboard, header = get_calendar_keyboard(user_id, year, month)
+        await _safe_edit(query, header, reply_markup=keyboard)
+        return
+
+    if data == "cal_back":
+        await _safe_edit(query, "Выбери действие:")
+        await _safe_reply(query.message, "Выбери действие:", reply_markup=get_main_keyboard())
+        return
+
+    if data == "cal_ignore":
         return
 
     if data.startswith("set_"):
@@ -887,7 +717,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_data["notes"][note_pending] = text
         user_data.pop("note_pending", None)
         save_user_data(user_id, user_data)
-        logger.info("Saved note for %s: %s", note_pending, text[:50])
         await update.message.reply_text(
             "✅ Заметка к {date} сохранена.".format(
                 date=datetime.datetime.strptime(note_pending, "%Y-%m-%d").strftime("%d.%m.%Y")
@@ -915,13 +744,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if text == "📊 Статистика":
         user_data = get_user_data(user_id)
-        answers = dict(HARD_DATA)
         data_dict = load_data()
         uid = str(user_id)
         file_answers = data_dict.get(uid, {}).get("answers", {})
-        answers.update(file_answers)
-        total = len(answers)
-        pain_days = sum(1 for v in answers.values() if v)
+        total = len(file_answers)
+        pain_days = sum(1 for v in file_answers.values() if v)
         no_pain_days = total - pain_days
 
         if total == 0:
@@ -931,7 +758,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pain_pct = round(pain_days / total * 100)
 
         monthly = {}
-        for date_str, has_pain in answers.items():
+        for date_str, has_pain in file_answers.items():
             try:
                 ym = date_str[:7]
             except Exception:
@@ -994,7 +821,7 @@ async def post_init(application):
 
 
 def main():
-    logger.info("Bot starting... v4 May=%d", len(HARD_DATA))
+    logger.info("Bot starting... v5 May=%d", len(HARD_DATA))
     try:
         app = (
             ApplicationBuilder()
