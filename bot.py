@@ -192,6 +192,7 @@ def get_calendar_keyboard(user_id, year, month):
     uid = str(user_id)
     file_answers = data_dict.get(uid, {}).get("answers", {})
     notes = user_data.get("notes", {})
+    logger.info("Calendar uid=%s file_answers=%s HARD_DATA_count=%d", uid, file_answers, len(HARD_DATA))
 
     prev_month = month - 1 if month > 1 else 12
     prev_year = year if month > 1 else year - 1
