@@ -238,23 +238,16 @@ def _atomic_save(filepath, data):
 
 def load_data():
     with _file_lock:
-        logger.info("load_data: DATA_FILE=%s, exists=%s", DATA_FILE, os.path.exists(DATA_FILE))
         if not os.path.exists(DATA_FILE):
             return {}
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
-                result = json.load(f)
-                logger.info("load_data: loaded %d users, keys=%s", len(result), list(result.keys()))
-                for uid, udata in result.items():
-                    logger.info("load_data: uid=%s, keys=%s", uid, list(udata.keys()))
-                return result
-        except (json.JSONDecodeError, OSError) as e:
-            logger.error("load_data: error reading %s: %s", DATA_FILE, e)
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
             return {}
 
 
 def save_data(data):
-    logger.info("save_data: DATA_FILE=%s, users=%d", DATA_FILE, len(data))
     _atomic_save(DATA_FILE, data)
 
 
@@ -277,7 +270,9 @@ def get_user_data(user_id):
 
 def save_user_data(user_id, user_data):
     clean = dict(user_data)
-    logger.info("save_user_data: keys=%s, notes_count=%s", list(clean.keys()), len(clean.get("notes", {})))
+    data = load_data()
+    data[str(user_id)] = clean
+    save_data(data)
     data = load_data()
     data[str(user_id)] = clean
     save_data(data)
@@ -358,13 +353,9 @@ def get_calendar_keyboard(user_id, year, month):
     answers = dict(HARD_DATA)
     data_dict = load_data()
     uid = str(user_id)
-    user_info = data_dict.get(uid, {})
-    logger.info("Calendar: uid=%s, user_info_keys=%s", uid, list(user_info.keys()))
-    file_answers = user_info.get("answers", {})
-    logger.info("Calendar: file_answers=%s", file_answers)
+    file_answers = data_dict.get(uid, {}).get("answers", {})
     answers.update(file_answers)
     notes = user_data.get("notes", {})
-    logger.info("Calendar: notes=%s", list(notes.keys()) if notes else [])
 
     prev_month = month - 1 if month > 1 else 12
     prev_year = year if month > 1 else year - 1
@@ -662,15 +653,12 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_daily_question(context: ContextTypes.DEFAULT_TYPE):
     chat_id = context.job.chat_id
     yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
-    logger.info("send_daily_question: chat_id=%s, yesterday=%s", chat_id, yesterday)
 
     data = load_data()
     uid = str(chat_id)
     raw_answers = data.get(uid, {}).get("answers", {})
-    logger.info("send_daily_question: raw_answers=%s", raw_answers)
 
     if yesterday in raw_answers:
-        logger.info("send_daily_question: yesterday already answered, skipping")
         return
 
     keyboard = InlineKeyboardMarkup([
@@ -700,7 +688,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts = data.split("_")
         has_pain = parts[1] == "yes"
         date_str = parts[2]
-        logger.info("Pain callback received: date=%s, has_pain=%s, uid=%s", date_str, has_pain, user_id)
 
         data_dict = load_data()
         uid = str(user_id)
@@ -711,7 +698,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_data["answers"] = {}
         user_data["answers"][date_str] = has_pain
         save_data(data_dict)
-        logger.info("Saved pain answer: date=%s, has_pain=%s, uid=%s", date_str, has_pain, uid)
 
         emoji = "😣" if has_pain else "😊"
         text = "{emoji} Записал: {date} — {status}".format(
@@ -747,7 +733,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 data_dict[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
             data_dict[uid]["note_pending"] = date_str
             save_data(data_dict)
-            logger.info("Set note_pending=%s for uid=%s", date_str, uid)
             await _safe_edit(query, "Напиши заметку:")
             return
 
@@ -851,7 +836,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif data == "set_min_prev":
             minute = (minute - 15) % 60
         elif data == "set_save":
-            logger.info("set_save: user=%s, hour=%s, minute=%s", user_id, hour, minute)
             save_user_data(user_id, user_data)
             await reschedule_user_job(context, user_id, hour, minute)
             try:
@@ -897,7 +881,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_data = get_user_data(user_id)
     note_pending = user_data.get("note_pending")
-    logger.info("handle_message: uid=%s, note_pending=%s, keys=%s", user_id, note_pending, list(user_data.keys()))
     if note_pending:
         if "notes" not in user_data:
             user_data["notes"] = {}
