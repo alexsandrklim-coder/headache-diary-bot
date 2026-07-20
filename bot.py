@@ -662,12 +662,15 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_daily_question(context: ContextTypes.DEFAULT_TYPE):
     chat_id = context.job.chat_id
     yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    logger.info("send_daily_question: chat_id=%s, yesterday=%s", chat_id, yesterday)
 
     data = load_data()
     uid = str(chat_id)
     raw_answers = data.get(uid, {}).get("answers", {})
+    logger.info("send_daily_question: raw_answers=%s", raw_answers)
 
     if yesterday in raw_answers:
+        logger.info("send_daily_question: yesterday already answered, skipping")
         return
 
     keyboard = InlineKeyboardMarkup([
@@ -848,6 +851,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif data == "set_min_prev":
             minute = (minute - 15) % 60
         elif data == "set_save":
+            logger.info("set_save: user=%s, hour=%s, minute=%s", user_id, hour, minute)
             save_user_data(user_id, user_data)
             await reschedule_user_job(context, user_id, hour, minute)
             try:
