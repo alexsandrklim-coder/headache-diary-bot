@@ -360,7 +360,8 @@ def generate_report(user_id, date_start, date_end):
     while current <= d_end:
         date_str = current.strftime("%Y-%m-%d")
         total_days += 1
-        if file_answers.get(date_str) is True:
+        is_pain = file_answers.get(date_str, HARD_DATA.get(date_str, False))
+        if is_pain:
             pain_count += 1
         current += datetime.timedelta(days=1)
 
@@ -382,7 +383,7 @@ def generate_report(user_id, date_start, date_end):
         except Exception:
             date_display = date_str
 
-        is_pain = file_answers.get(date_str) is True
+        is_pain = file_answers.get(date_str, HARD_DATA.get(date_str, False))
         pain_status = " — болела голова" if is_pain else " — не болела"
 
         doc.add_heading(f"{date_display}{pain_status}", level=2)
@@ -835,7 +836,7 @@ async def post_init(application):
 
 
 def main():
-    logger.info("Bot starting... v7 report-fix=%d", len(HARD_DATA))
+    logger.info("Bot starting... v8 report-fix2=%d", len(HARD_DATA))
     try:
         app = (
             ApplicationBuilder()
