@@ -277,8 +277,6 @@ def get_user_data(user_id):
 
 def save_user_data(user_id, user_data):
     clean = dict(user_data)
-    clean_answers = {k: v for k, v in clean.get("answers", {}).items() if k not in HARD_DATA}
-    clean["answers"] = clean_answers
     logger.info("save_user_data: keys=%s, notes_count=%s", list(clean.keys()), len(clean.get("notes", {})))
     data = load_data()
     data[str(user_id)] = clean
