@@ -356,6 +356,7 @@ def get_calendar_keyboard(user_id, year, month):
     file_answers = data_dict.get(uid, {}).get("answers", {})
     answers.update(file_answers)
     notes = user_data.get("notes", {})
+    logger.info("Calendar: uid=%s, file_answers=%s, notes=%s", uid, file_answers, list(notes.keys()) if notes else [])
 
     prev_month = month - 1 if month > 1 else 12
     prev_year = year if month > 1 else year - 1
@@ -688,6 +689,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts = data.split("_")
         has_pain = parts[1] == "yes"
         date_str = parts[2]
+        logger.info("Pain callback received: date=%s, has_pain=%s, uid=%s", date_str, has_pain, user_id)
 
         data_dict = load_data()
         uid = str(user_id)
@@ -698,6 +700,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_data["answers"] = {}
         user_data["answers"][date_str] = has_pain
         save_data(data_dict)
+        logger.info("Saved pain answer: date=%s, has_pain=%s, uid=%s", date_str, has_pain, uid)
 
         emoji = "😣" if has_pain else "😊"
         text = "{emoji} Записал: {date} — {status}".format(
