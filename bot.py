@@ -238,16 +238,21 @@ def _atomic_save(filepath, data):
 
 def load_data():
     with _file_lock:
+        logger.info("load_data: DATA_FILE=%s, exists=%s", DATA_FILE, os.path.exists(DATA_FILE))
         if not os.path.exists(DATA_FILE):
             return {}
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
+                result = json.load(f)
+                logger.info("load_data: loaded %d users", len(result))
+                return result
+        except (json.JSONDecodeError, OSError) as e:
+            logger.error("load_data: error reading %s: %s", DATA_FILE, e)
             return {}
 
 
 def save_data(data):
+    logger.info("save_data: DATA_FILE=%s, users=%d", DATA_FILE, len(data))
     _atomic_save(DATA_FILE, data)
 
 
