@@ -485,12 +485,16 @@ async def cmd_setpain(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_daily_question(context: ContextTypes.DEFAULT_TYPE):
     chat_id = context.job.chat_id
     yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    today = datetime.date.today().isoformat()
 
     data = load_data()
     uid = str(chat_id)
     raw_answers = data.get(uid, {}).get("answers", {})
 
+    logger.info("Daily question check: uid=%s yesterday=%s today=%s yesterday_in_answers=%s", uid, yesterday, today, yesterday in raw_answers)
+
     if yesterday in raw_answers:
+        logger.info("Skipping daily question: yesterday already answered")
         return
 
     keyboard = InlineKeyboardMarkup([
