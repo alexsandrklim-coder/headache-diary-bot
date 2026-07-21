@@ -671,6 +671,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif data == "set_min_prev":
             minute = (minute - 15) % 60
         elif data == "set_save":
+            user_data["hour"] = hour
+            user_data["minute"] = minute
             save_user_data(user_id, user_data)
             await reschedule_user_job(context, user_id, hour, minute)
             try:
@@ -836,7 +838,7 @@ async def post_init(application):
 
 
 def main():
-    logger.info("Bot starting... v8 report-fix2=%d", len(HARD_DATA))
+    logger.info("Bot starting... v9 time-fix=%d", len(HARD_DATA))
     try:
         app = (
             ApplicationBuilder()
