@@ -486,15 +486,8 @@ async def send_daily_question(context: ContextTypes.DEFAULT_TYPE):
     chat_id = context.job.chat_id
     yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
 
-    data = load_data()
-    uid = str(chat_id)
-    raw_answers = data.get(uid, {}).get("answers", {})
+    logger.info("Sending daily question to %s for yesterday %s", chat_id, yesterday)
 
-    if yesterday in raw_answers:
-        logger.info("Skipping daily question for %s: yesterday %s already answered", uid, yesterday)
-        return
-
-    logger.info("Sending daily question to %s for yesterday %s", uid, yesterday)
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("Да 🙄", callback_data=f"pain_yes_{yesterday}"),
