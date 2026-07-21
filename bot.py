@@ -107,10 +107,7 @@ def get_user_data(user_id):
         data[uid]["hour"] = DEFAULT_HOUR
     if "minute" not in data[uid]:
         data[uid]["minute"] = DEFAULT_MINUTE
-    answers = data[uid].setdefault("answers", {})
-    for k, v in HARD_DATA.items():
-        if k not in answers:
-            answers[k] = v
+    data[uid].setdefault("answers", {})
     return data[uid]
 
 
@@ -817,11 +814,11 @@ async def post_init(application):
     fixed = False
     for uid, udata in data.items():
         answers = udata.get("answers", {})
-        for date_key, hard_val in HARD_DATA.items():
-            if hard_val and answers.get(date_key) is False:
+        for date_key in list(HARD_DATA.keys()):
+            if date_key in answers:
                 del answers[date_key]
                 fixed = True
-                logger.info("Fixed: removed False for %s (HARD_DATA=True)", date_key)
+                logger.info("Cleaned: removed HARD_DATA key %s from answers", date_key)
         hour = udata.get("hour", DEFAULT_HOUR)
         minute = udata.get("minute", DEFAULT_MINUTE)
         utc_hour = (hour - 3) % 24
@@ -834,11 +831,11 @@ async def post_init(application):
         logger.info("Scheduled daily question for user %s at %02d:%02d MSK (UTC %02d:%02d)", uid, hour, minute, utc_hour, minute)
     if fixed:
         save_data(data)
-        logger.info("Saved data after fixing False entries")
+        logger.info("Saved data after cleaning HARD_DATA keys")
 
 
 def main():
-    logger.info("Bot starting... v9 time-fix=%d", len(HARD_DATA))
+    logger.info("Bot starting... v10 fix-daily=%d", len(HARD_DATA))
     try:
         app = (
             ApplicationBuilder()
