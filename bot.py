@@ -485,18 +485,16 @@ async def cmd_setpain(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_daily_question(context: ContextTypes.DEFAULT_TYPE):
     chat_id = context.job.chat_id
     yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
-    today = datetime.date.today().isoformat()
 
     data = load_data()
     uid = str(chat_id)
     raw_answers = data.get(uid, {}).get("answers", {})
 
-    logger.info("Daily question check: uid=%s yesterday=%s today=%s yesterday_in_answers=%s", uid, yesterday, today, yesterday in raw_answers)
-
     if yesterday in raw_answers:
-        logger.info("Skipping daily question: yesterday already answered")
+        logger.info("Skipping daily question for %s: yesterday %s already answered", uid, yesterday)
         return
 
+    logger.info("Sending daily question to %s for yesterday %s", uid, yesterday)
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("Да 🙄", callback_data=f"pain_yes_{yesterday}"),
@@ -839,7 +837,7 @@ async def post_init(application):
 
 
 def main():
-    logger.info("Bot starting... v10 fix-daily=%d", len(HARD_DATA))
+    logger.info("Bot starting... v11 debug=%d", len(HARD_DATA))
     try:
         app = (
             ApplicationBuilder()
