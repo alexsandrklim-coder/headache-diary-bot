@@ -946,7 +946,17 @@ def main():
                 users = [k for k in data.keys() if not k.startswith("_")]
                 return web.Response(text=f"OK gist={_gist_available()} users={users}")
 
+            async def on_startup(app_obj):
+                await app.start()
+                logger.info("Application started")
+
+            async def on_shutdown(app_obj):
+                await app.stop()
+                logger.info("Application stopped")
+
             web_app = web.Application()
+            web_app.on_startup.append(on_startup)
+            web_app.on_shutdown.append(on_shutdown)
             web_app.router.add_post(f"/{BOT_TOKEN}", webhook_handler)
             web_app.router.add_get("/trigger", trigger_handler)
             web_app.router.add_get("/health", health_handler)
