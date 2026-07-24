@@ -7,6 +7,9 @@ import logging
 import tempfile
 import threading
 import tempfile as _tf
+import hashlib
+import hmac
+from aiohttp import web
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -849,6 +852,7 @@ def main():
     logger.info("Bot starting... v14 webhook=%d", len(HARD_DATA))
     WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
     PORT = int(os.environ.get("PORT", "8443"))
+
     try:
         app = (
             ApplicationBuilder()
@@ -865,14 +869,50 @@ def main():
         app.add_handler(CallbackQueryHandler(handle_callback))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         app.add_error_handler(error_handler)
+
         if WEBHOOK_URL:
-            logger.info("Bot is running in WEBHOOK mode on port %d", PORT)
-            app.run_webhook(
-                listen="0.0.0.0",
-                port=PORT,
-                url_path=BOT_TOKEN,
-                webhook_url=f"{WEBHOOK_URL}/{BOT_TOKEN}",
-            )
+            import asyncio as _aio
+
+            async def webhook_handler(request):
+                update = Update.de_json(await request.json(), app.bot)
+                await app.update_queue.put(update)
+                return web.Response()
+
+            async def trigger_handler(request):
+                logger.info("Trigger: sending daily questions")
+                msk_now = datetime.datetime.utcnow() + datetime.timedelta(hours=3)
+                yesterday = (msk_now.date() - datetime.timedelta(days=1)).isoformat()
+                data = load_data()
+                sent = 0
+                for uid in data:
+                    keyboard = InlineKeyboardMarkup([
+                        [
+                            InlineKeyboardButton("Да 🙄", callback_data=f"pain_yes_{yesterday}"),
+                            InlineKeyboardButton("Нет 🙂", callback_data=f"pain_no_{yesterday}"),
+                        ],
+                    ])
+                    try:
+                        await app.bot.send_message(
+                            chat_id=int(uid),
+                            text="Привет. У вас вчера болела голова?",
+                            reply_markup=keyboard,
+                        )
+                        sent += 1
+                        logger.info("Trigger: sent to %s for yesterday %s", uid, yesterday)
+                    except Exception as e:
+                        logger.error("Trigger: failed for %s: %s", uid, e)
+                return web.Response(text=f"Sent to {sent} users")
+
+            async def health_handler(request):
+                return web.Response(text="OK")
+
+            web_app = web.Application()
+            web_app.router.add_post(f"/{BOT_TOKEN}", webhook_handler)
+            web_app.router.add_get("/trigger", trigger_handler)
+            web_app.router.add_get("/health", health_handler)
+
+            logger.info("Starting webhook server on port %d", PORT)
+            web.run_app(web_app, host="0.0.0.0", port=PORT)
         else:
             logger.info("Bot is running in POLLING mode!")
             app.run_polling(drop_pending_updates=True)
