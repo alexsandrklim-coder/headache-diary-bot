@@ -945,7 +945,18 @@ def main():
                 gist_ok = _gist_available()
                 data = load_data()
                 users = list(data.keys()) if isinstance(data, dict) else []
-                return web.Response(text=f"OK gist={gist_ok} token={'yes' if GITHUB_TOKEN else 'no'} gist_id={'yes' if GIST_ID else 'no'} users={users}")
+                test_save = "none"
+                if gist_ok:
+                    try:
+                        test_data = data.copy()
+                        test_data["__health_test"] = True
+                        save_data(test_data)
+                        del test_data["__health_test"]
+                        save_data(test_data)
+                        test_save = "ok"
+                    except Exception as e:
+                        test_save = str(e)
+                return web.Response(text=f"OK gist={gist_ok} save={test_save} users={users}")
 
             web_app = web.Application()
             web_app.router.add_post(f"/{BOT_TOKEN}", webhook_handler)
