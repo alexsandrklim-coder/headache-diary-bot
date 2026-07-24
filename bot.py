@@ -85,7 +85,28 @@ def _atomic_save(filepath, data):
             raise
 
 
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+GIST_ID = os.environ.get("GIST_ID", "")
+
+
+def _gist_available():
+    return bool(GITHUB_TOKEN and GIST_ID)
+
+
 def load_data():
+    if _gist_available():
+        try:
+            import urllib.request
+            req = urllib.request.Request(
+                f"https://api.github.com/gists/{GIST_ID}",
+                headers={"Authorization": f"Bearer {GITHUB_TOKEN}", "User-Agent": "headache-bot"},
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                gist = json.loads(resp.read())
+            content = gist["files"]["headache_data.json"]["content"]
+            return json.loads(content)
+        except Exception as e:
+            logger.error("Gist load failed: %s, falling back to file", e)
     with _file_lock:
         if not os.path.exists(DATA_FILE):
             return {}
@@ -97,6 +118,23 @@ def load_data():
 
 
 def save_data(data):
+    if _gist_available():
+        try:
+            import urllib.request
+            body = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+            patch = json.dumps({"files": {"headache_data.json": {"content": body.decode("utf-8")}}}).encode("utf-8")
+            req = urllib.request.Request(
+                f"https://api.github.com/gists/{GIST_ID}",
+                data=patch,
+                headers={"Authorization": f"Bearer {GITHUB_TOKEN}", "User-Agent": "headache-bot", "Content-Type": "application/json"},
+                method="PATCH",
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                pass
+            logger.info("Saved data to Gist")
+            return
+        except Exception as e:
+            logger.error("Gist save failed: %s, falling back to file", e)
     _atomic_save(DATA_FILE, data)
 
 
