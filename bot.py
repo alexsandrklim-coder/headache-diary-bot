@@ -942,7 +942,10 @@ def main():
                 return web.Response(text=f"Sent to {sent} users")
 
             async def health_handler(request):
-                return web.Response(text="OK")
+                gist_ok = _gist_available()
+                data = load_data()
+                users = list(data.keys()) if isinstance(data, dict) else []
+                return web.Response(text=f"OK gist={gist_ok} token={'yes' if GITHUB_TOKEN else 'no'} gist_id={'yes' if GIST_ID else 'no'} users={users}")
 
             web_app = web.Application()
             web_app.router.add_post(f"/{BOT_TOKEN}", webhook_handler)
