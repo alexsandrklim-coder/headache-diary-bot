@@ -846,7 +846,9 @@ async def post_init(application):
 
 
 def main():
-    logger.info("Bot starting... v13 audit-fix=%d", len(HARD_DATA))
+    logger.info("Bot starting... v14 webhook=%d", len(HARD_DATA))
+    WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
+    PORT = int(os.environ.get("PORT", "8443"))
     try:
         app = (
             ApplicationBuilder()
@@ -863,8 +865,17 @@ def main():
         app.add_handler(CallbackQueryHandler(handle_callback))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         app.add_error_handler(error_handler)
-        logger.info("Bot is running!")
-        app.run_polling(drop_pending_updates=True)
+        if WEBHOOK_URL:
+            logger.info("Bot is running in WEBHOOK mode on port %d", PORT)
+            app.run_webhook(
+                listen="0.0.0.0",
+                port=PORT,
+                url_path=BOT_TOKEN,
+                webhook_url=f"{WEBHOOK_URL}/{BOT_TOKEN}",
+            )
+        else:
+            logger.info("Bot is running in POLLING mode!")
+            app.run_polling(drop_pending_updates=True)
     except Exception as e:
         logger.exception("Bot crashed: %s", e)
         raise
