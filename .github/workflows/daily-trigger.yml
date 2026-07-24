@@ -1,0 +1,12 @@
+name: Daily trigger
+on:
+  schedule:
+    - cron: '45 15 * * *'  # 18:45 MSK = 15:45 UTC
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger daily question
+        run: curl -s "https://headache-bot.onrender.com/trigger"
