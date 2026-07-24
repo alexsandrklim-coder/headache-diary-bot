@@ -947,11 +947,13 @@ def main():
                 return web.Response(text=f"OK gist={_gist_available()} users={users}")
 
             async def on_startup(app_obj):
+                await app.initialize()
                 await app.start()
-                logger.info("Application started")
+                logger.info("Application started and processing updates")
 
             async def on_shutdown(app_obj):
                 await app.stop()
+                await app.shutdown()
                 logger.info("Application stopped")
 
             web_app = web.Application()
