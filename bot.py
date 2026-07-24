@@ -112,9 +112,28 @@ def get_user_data(user_id):
 
 
 def save_user_data(user_id, user_data):
-    data = load_data()
-    data[str(user_id)] = user_data
-    save_data(data)
+    with _file_lock:
+        if os.path.exists(DATA_FILE):
+            try:
+                with open(DATA_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                data = {}
+        else:
+            data = {}
+        data[str(user_id)] = user_data
+        dir_name = os.path.dirname(DATA_FILE) or "."
+        fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, DATA_FILE)
+        except Exception:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+            raise
 
 
 def get_user_time(user_id):
@@ -188,10 +207,10 @@ async def reschedule_user_job(context, user_id, hour, minute):
 
 
 def get_calendar_keyboard(user_id, year, month):
-    user_data = get_user_data(user_id)
     data_dict = load_data()
     uid = str(user_id)
-    file_answers = data_dict.get(uid, {}).get("answers", {})
+    user_data = data_dict.get(uid, {})
+    file_answers = user_data.get("answers", {})
     notes = user_data.get("notes", {})
     logger.info("Calendar uid=%s file_answers=%s HARD_DATA_count=%d", uid, file_answers, len(HARD_DATA))
 
@@ -265,10 +284,10 @@ def get_calendar_keyboard(user_id, year, month):
 
 
 def get_report_calendar_keyboard(user_id, year, month, selected_start):
-    user_data = get_user_data(user_id)
     data_dict = load_data()
     uid = str(user_id)
-    file_answers = data_dict.get(uid, {}).get("answers", {})
+    user_data = data_dict.get(uid, {})
+    file_answers = user_data.get("answers", {})
     notes = user_data.get("notes", {})
 
     prev_month = month - 1 if month > 1 else 12
@@ -331,7 +350,11 @@ def generate_report(user_id, date_start, date_end):
         except Exception:
             continue
 
-    if not report_notes:
+    has_data = any(
+        file_answers.get((d_start + datetime.timedelta(days=i)).strftime("%Y-%m-%d")) is not None
+        for i in range((d_end - d_start).days + 1)
+    )
+    if not report_notes and not has_data:
         return None
 
     doc = Document()
@@ -373,6 +396,8 @@ def generate_report(user_id, date_start, date_end):
     doc.add_heading('Заметки', level=1)
 
     sorted_dates = sorted(report_notes.keys())
+    if not sorted_dates:
+        doc.add_paragraph("Нет заметок за выбранный период.")
     for date_str in sorted_dates:
         try:
             d = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
@@ -484,7 +509,8 @@ async def cmd_setpain(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def send_daily_question(context: ContextTypes.DEFAULT_TYPE):
     chat_id = context.job.chat_id
-    yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+    msk_now = datetime.datetime.utcnow() + datetime.timedelta(hours=3)
+    yesterday = (msk_now.date() - datetime.timedelta(days=1)).isoformat()
 
     logger.info("Sending daily question to %s for yesterday %s", chat_id, yesterday)
 
@@ -806,14 +832,7 @@ async def error_handler(update, context):
 
 async def post_init(application):
     data = load_data()
-    fixed = False
     for uid, udata in data.items():
-        answers = udata.get("answers", {})
-        for date_key in list(HARD_DATA.keys()):
-            if date_key in answers:
-                del answers[date_key]
-                fixed = True
-                logger.info("Cleaned: removed HARD_DATA key %s from answers", date_key)
         hour = udata.get("hour", DEFAULT_HOUR)
         minute = udata.get("minute", DEFAULT_MINUTE)
         utc_hour = (hour - 3) % 24
@@ -824,13 +843,10 @@ async def post_init(application):
             name=f"daily_{uid}",
         )
         logger.info("Scheduled daily question for user %s at %02d:%02d MSK (UTC %02d:%02d)", uid, hour, minute, utc_hour, minute)
-    if fixed:
-        save_data(data)
-        logger.info("Saved data after cleaning HARD_DATA keys")
 
 
 def main():
-    logger.info("Bot starting... v11 debug=%d", len(HARD_DATA))
+    logger.info("Bot starting... v13 audit-fix=%d", len(HARD_DATA))
     try:
         app = (
             ApplicationBuilder()
