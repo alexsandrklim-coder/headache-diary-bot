@@ -686,16 +686,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts = data.split("_")
         year = int(parts[2])
         month = int(parts[3])
-        if data.startswith("cal_prev_"):
-            month -= 1
-            if month < 1:
-                month = 12
-                year -= 1
-        else:
-            month += 1
-            if month > 12:
-                month = 1
-                year += 1
         keyboard, header = get_calendar_keyboard(user_id, year, month)
         await _safe_edit(query, header, reply_markup=keyboard)
         return
