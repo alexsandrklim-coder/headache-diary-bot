@@ -6,9 +6,7 @@ import datetime
 import logging
 import tempfile
 import threading
-import tempfile as _tf
-import hashlib
-import hmac
+import urllib.request
 from aiohttp import web
 from docx import Document
 from docx.shared import Pt, RGBColor
@@ -153,28 +151,9 @@ def get_user_data(user_id):
 
 
 def save_user_data(user_id, user_data):
-    with _file_lock:
-        if os.path.exists(DATA_FILE):
-            try:
-                with open(DATA_FILE, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-            except (json.JSONDecodeError, OSError):
-                data = {}
-        else:
-            data = {}
-        data[str(user_id)] = user_data
-        dir_name = os.path.dirname(DATA_FILE) or "."
-        fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".tmp")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            os.replace(tmp_path, DATA_FILE)
-        except Exception:
-            try:
-                os.remove(tmp_path)
-            except OSError:
-                pass
-            raise
+    data = load_data()
+    data[str(user_id)] = user_data
+    save_data(data)
 
 
 def get_user_time(user_id):
@@ -196,14 +175,10 @@ async def _safe_reply(message, text, **kwargs):
     for attempt in range(3):
         try:
             return await message.reply_text(text, **kwargs)
-        except TimedOut:
-            logger.warning("TimedOut on attempt %d, retrying...", attempt + 1)
+        except Exception as e:
+            logger.warning("reply_text attempt %d failed: %s", attempt + 1, e)
             if attempt == 2:
-                raise
-        except NetworkError as e:
-            logger.warning("NetworkError on attempt %d: %s", attempt + 1, e)
-            if attempt == 2:
-                raise
+                return None
 
 
 async def _safe_edit(query, text, **kwargs):
@@ -233,6 +208,9 @@ def get_settings_keyboard(hour, minute):
 
 async def reschedule_user_job(context, user_id, hour, minute):
     job_queue = context.job_queue
+    if not job_queue:
+        logger.warning("No job_queue available, skipping reschedule")
+        return
     job_name = f"daily_{user_id}"
     current_jobs = job_queue.get_jobs_by_name(job_name)
     for job in current_jobs:
@@ -253,7 +231,6 @@ def get_calendar_keyboard(user_id, year, month):
     user_data = data_dict.get(uid, {})
     file_answers = user_data.get("answers", {})
     notes = user_data.get("notes", {})
-    logger.info("Calendar uid=%s file_answers=%s HARD_DATA_count=%d", uid, file_answers, len(HARD_DATA))
 
     prev_month = month - 1 if month > 1 else 12
     prev_year = year if month > 1 else year - 1
@@ -262,9 +239,9 @@ def get_calendar_keyboard(user_id, year, month):
 
     buttons = []
     buttons.append([
-        InlineKeyboardButton(f"◀ {MONTHS_RU[prev_month-1]}", callback_data=f"cal_prev_{year}_{month}"),
+        InlineKeyboardButton(f"◀ {MONTHS_RU[prev_month-1]}", callback_data=f"cal_prev_{prev_year}_{prev_month}"),
         InlineKeyboardButton(f"{MONTHS_RU[month-1]} {year}", callback_data="cal_ignore"),
-        InlineKeyboardButton(f"{MONTHS_RU[next_month-1]} ▶", callback_data=f"cal_next_{year}_{month}"),
+        InlineKeyboardButton(f"{MONTHS_RU[next_month-1]} ▶", callback_data=f"cal_next_{next_year}_{next_month}"),
     ])
     buttons.append([
         InlineKeyboardButton("Пн", callback_data="cal_ignore"),
@@ -338,9 +315,9 @@ def get_report_calendar_keyboard(user_id, year, month, selected_start):
 
     buttons = []
     buttons.append([
-        InlineKeyboardButton(f"◀ {MONTHS_RU[prev_month-1]}", callback_data=f"cal_prev_{year}_{month}"),
+        InlineKeyboardButton(f"◀ {MONTHS_RU[prev_month-1]}", callback_data=f"cal_prev_{prev_year}_{prev_month}"),
         InlineKeyboardButton(f"{MONTHS_RU[month-1]} {year}", callback_data="cal_ignore"),
-        InlineKeyboardButton(f"{MONTHS_RU[next_month-1]} ▶", callback_data=f"cal_next_{year}_{month}"),
+        InlineKeyboardButton(f"{MONTHS_RU[next_month-1]} ▶", callback_data=f"cal_next_{next_year}_{next_month}"),
     ])
     buttons.append([
         InlineKeyboardButton("Пн", callback_data="cal_ignore"),
@@ -459,22 +436,19 @@ def generate_report(user_id, date_start, date_end):
     run.font.size = Pt(8)
     run.font.color.rgb = RGBColor(150, 150, 150)
 
-    tmp = _tf.NamedTemporaryFile(delete=False, suffix=".docx")
-    doc.save(tmp.name)
-    tmp.close()
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".docx")
+    try:
+        doc.save(tmp.name)
+    finally:
+        tmp.close()
     return tmp.name
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    hour, minute = get_user_time(user_id)
-
-    data = load_data()
-    uid = str(user_id)
-    if uid not in data:
-        data[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
-        save_data(data)
-    user_data = data[uid]
+    user_data = get_user_data(user_id)
+    hour = user_data.get("hour", DEFAULT_HOUR)
+    minute = user_data.get("minute", DEFAULT_MINUTE)
 
     await reschedule_user_job(context, user_id, hour, minute)
 
@@ -923,6 +897,8 @@ def main():
                 data = load_data()
                 sent = 0
                 for uid in data:
+                    if not uid.isdigit():
+                        continue
                     keyboard = InlineKeyboardMarkup([
                         [
                             InlineKeyboardButton("Да 🙄", callback_data=f"pain_yes_{yesterday}"),
