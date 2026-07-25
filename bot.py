@@ -91,20 +91,43 @@ def _gist_available():
     return bool(GITHUB_TOKEN and GIST_ID)
 
 
+def _gist_request(url, data=None, method="GET"):
+    """Make a Gist API request with retry (3 attempts, exponential backoff)."""
+    headers = {"Authorization": f"Bearer {GITHUB_TOKEN}", "User-Agent": "headache-bot"}
+    if data is not None:
+        headers["Content-Type"] = "application/json"
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(url, data=data, headers=headers, method=method)
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                return json.loads(resp.read()) if method == "GET" else True
+        except urllib.error.HTTPError as e:
+            if e.code == 403:
+                retry_after = int(e.headers.get("Retry-After", 10))
+                logger.warning("Gist rate limit, retry after %ds (attempt %d/3)", retry_after, attempt + 1)
+                import time; time.sleep(retry_after)
+            elif e.code in (500, 502, 503):
+                logger.warning("Gist server error %d, retrying (attempt %d/3)", e.code, attempt + 1)
+                import time; time.sleep(2 ** attempt)
+            else:
+                raise
+        except Exception as e:
+            logger.warning("Gist request failed: %s, retrying (attempt %d/3)", e, attempt + 1)
+            import time; time.sleep(2 ** attempt)
+    return None
+
+
 def load_data():
     if _gist_available():
-        try:
-            import urllib.request
-            req = urllib.request.Request(
-                f"https://api.github.com/gists/{GIST_ID}",
-                headers={"Authorization": f"Bearer {GITHUB_TOKEN}", "User-Agent": "headache-bot"},
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                gist = json.loads(resp.read())
-            content = gist["files"]["headache_data.json"]["content"]
-            return json.loads(content)
-        except Exception as e:
-            logger.error("Gist load failed: %s, falling back to file", e)
+        result = _gist_request(f"https://api.github.com/gists/{GIST_ID}")
+        if result is not None:
+            try:
+                content = result["files"]["headache_data.json"]["content"]
+                return json.loads(content)
+            except (KeyError, json.JSONDecodeError) as e:
+                logger.error("Gist parse failed: %s", e)
+        else:
+            logger.error("Gist load failed after 3 retries, falling back to file")
     with _file_lock:
         if not os.path.exists(DATA_FILE):
             return {}
@@ -117,22 +140,18 @@ def load_data():
 
 def save_data(data):
     if _gist_available():
-        try:
-            import urllib.request
-            body = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
-            patch = json.dumps({"files": {"headache_data.json": {"content": body.decode("utf-8")}}}).encode("utf-8")
-            req = urllib.request.Request(
-                f"https://api.github.com/gists/{GIST_ID}",
-                data=patch,
-                headers={"Authorization": f"Bearer {GITHUB_TOKEN}", "User-Agent": "headache-bot", "Content-Type": "application/json"},
-                method="PATCH",
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                pass
+        body = json.dumps(data, ensure_ascii=False, indent=2)
+        patch = json.dumps({"files": {"headache_data.json": {"content": body}}})
+        result = _gist_request(
+            f"https://api.github.com/gists/{GIST_ID}",
+            data=patch.encode("utf-8"),
+            method="PATCH",
+        )
+        if result is True:
             logger.info("Saved data to Gist")
             return
-        except Exception as e:
-            logger.error("Gist save failed: %s, falling back to file", e)
+        else:
+            logger.error("Gist save failed after 3 retries, falling back to file")
     _atomic_save(DATA_FILE, data)
 
 
