@@ -92,7 +92,6 @@ def _gist_available():
 
 
 def _gist_request(url, data=None, method="GET"):
-    """Make a Gist API request with retry (3 attempts, exponential backoff)."""
     headers = {"Authorization": f"Bearer {GITHUB_TOKEN}", "User-Agent": "headache-bot"}
     if data is not None:
         headers["Content-Type"] = "application/json"
