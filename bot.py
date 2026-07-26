@@ -6,7 +6,9 @@ import datetime
 import logging
 import tempfile
 import threading
+import asyncio
 import urllib.request
+import aiohttp
 from aiohttp import web
 from docx import Document
 from docx.shared import Pt, RGBColor
@@ -85,40 +87,47 @@ def _atomic_save(filepath, data):
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GIST_ID = os.environ.get("GIST_ID", "")
+TRIGGER_SECRET = os.environ.get("TRIGGER_SECRET", "")
 
 
 def _gist_available():
     return bool(GITHUB_TOKEN and GIST_ID)
 
 
-def _gist_request(url, data=None, method="GET"):
+async def _gist_request(url, data=None, method="GET"):
     headers = {"Authorization": f"Bearer {GITHUB_TOKEN}", "User-Agent": "headache-bot"}
     if data is not None:
         headers["Content-Type"] = "application/json"
-    for attempt in range(3):
-        try:
-            req = urllib.request.Request(url, data=data, headers=headers, method=method)
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                return json.loads(resp.read()) if method == "GET" else True
-        except urllib.error.HTTPError as e:
-            if e.code == 403:
-                retry_after = int(e.headers.get("Retry-After", 10))
-                logger.warning("Gist rate limit, retry after %ds (attempt %d/3)", retry_after, attempt + 1)
-                import time; time.sleep(retry_after)
-            elif e.code in (500, 502, 503):
-                logger.warning("Gist server error %d, retrying (attempt %d/3)", e.code, attempt + 1)
-                import time; time.sleep(2 ** attempt)
-            else:
-                raise
-        except Exception as e:
-            logger.warning("Gist request failed: %s, retrying (attempt %d/3)", e, attempt + 1)
-            import time; time.sleep(2 ** attempt)
+    async with aiohttp.ClientSession() as session:
+        for attempt in range(3):
+            try:
+                kwargs = {"headers": headers, "timeout": aiohttp.ClientTimeout(total=20)}
+                if data is not None:
+                    kwargs["data"] = data
+                async with session.request(method, url, **kwargs) as resp:
+                    if resp.status == 200:
+                        if method == "GET":
+                            return await resp.json()
+                        return True
+                    elif resp.status == 403:
+                        retry_after = int(resp.headers.get("Retry-After", 10))
+                        logger.warning("Gist rate limit, retry after %ds (attempt %d/3)", retry_after, attempt + 1)
+                        await asyncio.sleep(retry_after)
+                    elif resp.status in (500, 502, 503):
+                        logger.warning("Gist server error %d, retrying (attempt %d/3)", resp.status, attempt + 1)
+                        await asyncio.sleep(2 ** attempt)
+                    else:
+                        logger.error("Gist API error %d", resp.status)
+                        return None
+            except Exception as e:
+                logger.warning("Gist request failed: %s, retrying (attempt %d/3)", e, attempt + 1)
+                await asyncio.sleep(2 ** attempt)
     return None
 
 
-def load_data():
+async def load_data():
     if _gist_available():
-        result = _gist_request(f"https://api.github.com/gists/{GIST_ID}")
+        result = await _gist_request(f"https://api.github.com/gists/{GIST_ID}")
         if result is not None:
             try:
                 content = result["files"]["headache_data.json"]["content"]
@@ -137,11 +146,11 @@ def load_data():
             return {}
 
 
-def save_data(data):
+async def save_data(data):
     if _gist_available():
         body = json.dumps(data, ensure_ascii=False, indent=2)
         patch = json.dumps({"files": {"headache_data.json": {"content": body}}})
-        result = _gist_request(
+        result = await _gist_request(
             f"https://api.github.com/gists/{GIST_ID}",
             data=patch.encode("utf-8"),
             method="PATCH",
@@ -154,12 +163,12 @@ def save_data(data):
     _atomic_save(DATA_FILE, data)
 
 
-def get_user_data(user_id):
-    data = load_data()
+async def get_user_data(user_id):
+    data = await load_data()
     uid = str(user_id)
     if uid not in data:
         data[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
-        save_data(data)
+        await save_data(data)
     if "hour" not in data[uid]:
         data[uid]["hour"] = DEFAULT_HOUR
     if "minute" not in data[uid]:
@@ -168,14 +177,14 @@ def get_user_data(user_id):
     return data[uid]
 
 
-def save_user_data(user_id, user_data):
-    data = load_data()
+async def save_user_data(user_id, user_data):
+    data = await load_data()
     data[str(user_id)] = user_data
-    save_data(data)
+    await save_data(data)
 
 
-def get_user_time(user_id):
-    user_data = get_user_data(user_id)
+async def get_user_time(user_id):
+    user_data = await get_user_data(user_id)
     return user_data.get("hour", DEFAULT_HOUR), user_data.get("minute", DEFAULT_MINUTE)
 
 
@@ -243,8 +252,8 @@ async def reschedule_user_job(context, user_id, hour, minute):
     logger.info("Rescheduled daily question for user %s at %02d:%02d MSK (UTC %02d:%02d)", user_id, hour, minute, utc_hour, minute)
 
 
-def get_calendar_keyboard(user_id, year, month):
-    data_dict = load_data()
+async def get_calendar_keyboard(user_id, year, month):
+    data_dict = await load_data()
     uid = str(user_id)
     user_data = data_dict.get(uid, {})
     file_answers = user_data.get("answers", {})
@@ -319,8 +328,8 @@ def get_calendar_keyboard(user_id, year, month):
     return InlineKeyboardMarkup(buttons), header
 
 
-def get_report_calendar_keyboard(user_id, year, month, selected_start):
-    data_dict = load_data()
+async def get_report_calendar_keyboard(user_id, year, month, selected_start):
+    data_dict = await load_data()
     uid = str(user_id)
     user_data = data_dict.get(uid, {})
     file_answers = user_data.get("answers", {})
@@ -367,8 +376,8 @@ def get_report_calendar_keyboard(user_id, year, month, selected_start):
     return InlineKeyboardMarkup(buttons), header
 
 
-def generate_report(user_id, date_start, date_end):
-    data_dict = load_data()
+async def generate_report(user_id, date_start, date_end):
+    data_dict = await load_data()
     uid = str(user_id)
     user_info = data_dict.get(uid, {})
     notes = user_info.get("notes", {})
@@ -464,7 +473,7 @@ def generate_report(user_id, date_start, date_end):
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    user_data = get_user_data(user_id)
+    user_data = await get_user_data(user_id)
     hour = user_data.get("hour", DEFAULT_HOUR)
     minute = user_data.get("minute", DEFAULT_MINUTE)
 
@@ -482,7 +491,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    hour, minute = get_user_time(user_id)
+    hour, minute = await get_user_time(user_id)
     await update.message.reply_text(
         "Как пользоваться:\n\n"
         "Каждый день в {hour}:{minute:02d} я пришлю вопрос: болела ли голова.\n"
@@ -524,14 +533,14 @@ async def cmd_setpain(update: Update, context: ContextTypes.DEFAULT_TYPE):
     has_pain = pain_str in ("да", "yes", "1", "true")
     date_key = date_obj.strftime("%Y-%m-%d")
 
-    data_dict = load_data()
+    data_dict = await load_data()
     uid = str(user_id)
     if uid not in data_dict:
         data_dict[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
     if "answers" not in data_dict[uid]:
         data_dict[uid]["answers"] = {}
     data_dict[uid]["answers"][date_key] = has_pain
-    save_data(data_dict)
+    await save_data(data_dict)
 
     status = "болела голова" if has_pain else "не болела"
     await update.message.reply_text(
@@ -575,7 +584,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         has_pain = parts[1] == "yes"
         date_str = parts[2]
 
-        data_dict = load_data()
+        data_dict = await load_data()
         uid = str(user_id)
         if uid not in data_dict:
             data_dict[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
@@ -583,7 +592,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if "answers" not in user_data:
             user_data["answers"] = {}
         user_data["answers"][date_str] = has_pain
-        save_data(data_dict)
+        await save_data(data_dict)
 
         emoji = "😣" if has_pain else "😊"
         text = "{emoji} Записал: {date} — {status}".format(
@@ -613,12 +622,12 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         if action == "yes":
-            data_dict = load_data()
+            data_dict = await load_data()
             uid = str(user_id)
             if uid not in data_dict:
                 data_dict[uid] = {"answers": {}, "hour": DEFAULT_HOUR, "minute": DEFAULT_MINUTE}
             data_dict[uid]["note_pending"] = date_str
-            save_data(data_dict)
+            await save_data(data_dict)
             await _safe_edit(query, "Напиши заметку:")
             return
 
@@ -628,14 +637,14 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts = data.split("_")
         year = int(parts[2])
         month = int(parts[3])
-        data_dict = load_data()
+        data_dict = await load_data()
         uid = str(user_id)
         data_dict.setdefault(uid, {})
         data_dict[uid]["report_start"] = None
         data_dict[uid]["report_year"] = year
         data_dict[uid]["report_month"] = month
-        save_data(data_dict)
-        keyboard, header = get_report_calendar_keyboard(user_id, year, month, None)
+        await save_data(data_dict)
+        keyboard, header = await get_report_calendar_keyboard(user_id, year, month, None)
         await _safe_edit(query, f"📝 Выбери начальную дату:\n{header}", reply_markup=keyboard)
         return
 
@@ -644,7 +653,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         year = int(parts[2])
         month = int(parts[3])
         day = int(parts[4])
-        data_dict = load_data()
+        data_dict = await load_data()
         uid = str(user_id)
         user_info = data_dict.get(uid, {})
         report_start = user_info.get("report_start")
@@ -659,8 +668,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             data_dict[uid].pop("report_start", None)
             data_dict[uid].pop("report_year", None)
             data_dict[uid].pop("report_month", None)
-            save_data(data_dict)
-            docx_path = generate_report(user_id, date_start, date_end)
+            await save_data(data_dict)
+            docx_path = await generate_report(user_id, date_start, date_end)
             if docx_path:
                 await _safe_edit(query, f"📝 Отчёт за период:\n{date_start} — {date_end}")
                 with open(docx_path, "rb") as f:
@@ -677,8 +686,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             data_dict[uid]["report_start"] = f"{year}-{month:02d}-{day:02d}"
             data_dict[uid]["report_year"] = year
             data_dict[uid]["report_month"] = month
-            save_data(data_dict)
-            keyboard, header = get_report_calendar_keyboard(user_id, year, month, f"{year}-{month:02d}-{day:02d}")
+            await save_data(data_dict)
+            keyboard, header = await get_report_calendar_keyboard(user_id, year, month, f"{year}-{month:02d}-{day:02d}")
             await _safe_edit(query, f"📝 Начало: {day}.{month:02d}.{year}\nВыбери конечную дату:\n{header}", reply_markup=keyboard)
         return
 
@@ -686,7 +695,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts = data.split("_")
         year = int(parts[2])
         month = int(parts[3])
-        keyboard, header = get_calendar_keyboard(user_id, year, month)
+        keyboard, header = await get_calendar_keyboard(user_id, year, month)
         await _safe_edit(query, header, reply_markup=keyboard)
         return
 
@@ -699,7 +708,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data.startswith("set_"):
-        user_data = get_user_data(user_id)
+        user_data = await get_user_data(user_id)
         hour = user_data.get("hour", DEFAULT_HOUR)
         minute = user_data.get("minute", DEFAULT_MINUTE)
 
@@ -714,7 +723,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif data == "set_save":
             user_data["hour"] = hour
             user_data["minute"] = minute
-            save_user_data(user_id, user_data)
+            await save_user_data(user_id, user_data)
             await reschedule_user_job(context, user_id, hour, minute)
             try:
                 await query.message.delete()
@@ -740,7 +749,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         user_data["hour"] = hour
         user_data["minute"] = minute
-        save_user_data(user_id, user_data)
+        await save_user_data(user_id, user_data)
 
         keyboard = get_settings_keyboard(hour, minute)
         await _safe_edit(
@@ -757,14 +766,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text.strip()
 
-    user_data = get_user_data(user_id)
+    user_data = await get_user_data(user_id)
     note_pending = user_data.get("note_pending")
     if note_pending:
         if "notes" not in user_data:
             user_data["notes"] = {}
         user_data["notes"][note_pending] = text
         user_data.pop("note_pending", None)
-        save_user_data(user_id, user_data)
+        await save_user_data(user_id, user_data)
         await update.message.reply_text(
             "✅ Заметка к {date} сохранена.".format(
                 date=datetime.datetime.strptime(note_pending, "%Y-%m-%d").strftime("%d.%m.%Y")
@@ -774,13 +783,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if text == "📋 Календарь":
+        data_dict = await load_data()
+        uid = str(user_id)
+        if uid in data_dict:
+            data_dict[uid].pop("report_start", None)
+            data_dict[uid].pop("report_year", None)
+            data_dict[uid].pop("report_month", None)
+            await save_data(data_dict)
         now = datetime.date.today()
-        keyboard, header = get_calendar_keyboard(user_id, now.year, now.month)
+        keyboard, header = await get_calendar_keyboard(user_id, now.year, now.month)
         await update.message.reply_text(header, reply_markup=keyboard)
         return
 
     if text == "⚙️ Настройки":
-        hour, minute = get_user_time(user_id)
+        hour, minute = await get_user_time(user_id)
         keyboard = get_settings_keyboard(hour, minute)
         await update.message.reply_text(
             "Настройки времени вопроса:\nТекущее время: {hour}:{minute:02d}".format(
@@ -791,8 +807,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if text == "📊 Статистика":
-        user_data = get_user_data(user_id)
-        data_dict = load_data()
+        user_data = await get_user_data(user_id)
+        data_dict = await load_data()
         uid = str(user_id)
         file_answers = data_dict.get(uid, {}).get("answers", {})
         total = len(file_answers)
@@ -854,8 +870,10 @@ async def error_handler(update, context):
 
 
 async def post_init(application):
-    data = load_data()
+    data = await load_data()
     for uid, udata in data.items():
+        if not uid.isdigit():
+            continue
         hour = udata.get("hour", DEFAULT_HOUR)
         minute = udata.get("minute", DEFAULT_MINUTE)
         utc_hour = (hour - 3) % 24
@@ -899,10 +917,12 @@ def main():
                 return web.Response()
 
             async def trigger_handler(request):
+                if TRIGGER_SECRET and request.headers.get("Authorization") != f"Bearer {TRIGGER_SECRET}":
+                    return web.Response(status=403, text="Forbidden")
                 logger.info("Trigger: sending daily questions")
                 msk_now = datetime.datetime.utcnow() + datetime.timedelta(hours=3)
                 yesterday = (msk_now.date() - datetime.timedelta(days=1)).isoformat()
-                data = load_data()
+                data = await load_data()
                 sent = 0
                 for uid in data:
                     if not uid.isdigit():
@@ -926,9 +946,7 @@ def main():
                 return web.Response(text=f"Sent to {sent} users")
 
             async def health_handler(request):
-                data = load_data()
-                users = [k for k in data.keys() if not k.startswith("_")]
-                return web.Response(text=f"OK gist={_gist_available()} users={users}")
+                return web.Response(text="OK")
 
             async def on_startup(app_obj):
                 await app.initialize()

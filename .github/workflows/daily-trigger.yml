@@ -9,4 +9,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger daily question
-        run: curl -s "https://headache-bot.onrender.com/trigger"
+        run: curl -s -H "Authorization: Bearer ${{ secrets.TRIGGER_SECRET }}" "https://headache-bot.onrender.com/trigger"
